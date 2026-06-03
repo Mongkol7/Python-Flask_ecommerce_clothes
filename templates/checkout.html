@@ -1,0 +1,139 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,200;0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=Playfair+Display:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/checkout.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+<title>MK7 - Checkout</title>
+</head>
+<body>
+
+{% include "components/navbar.html" %}
+
+    <section class="checkout-section">
+        <div class="container checkout-container">
+            <div class="text-center mb-5">
+                <h2 class="hero-title checkout-title">Secure <em>Checkout</em></h2>
+            </div>
+            {% if checkout_success %}
+            <div class="glass success-card mb-5 text-center">
+                {% if telegram_sent %}
+<div class="apple-pay-success" aria-hidden="true">
+  <div class="ap-ring"></div>
+  <div class="ap-ripple"></div>
+  <div class="ap-check">
+    <svg viewBox="0 0 46 46" xmlns="http://www.w3.org/2000/svg">
+      <polyline class="ap-path" points="9,24 19,34 37,14"/>
+    </svg>
+  </div>
+</div>
+                <p class="section-label">Order Confirmed</p>
+                <h3 class="success-title">Your order has been placed successfully.</h3>
+                <p class="success-copy mb-0">Thank you, {{ order_info.shipping.full_name }}. We received your order and will contact you soon.</p>
+                {% else %}
+                <p class="section-label">Order Not Confirmed</p>
+                <h3 class="success-title">We could not complete your order.</h3>
+                <p class="success-copy mb-0">Please review the reason below and try again.</p>
+                {% if telegram_error %}
+                <p class="telegram-error mt-3 mb-0">{{ telegram_error }}</p>
+                {% endif %}
+                {% endif %}
+                <a class="btn-pill-dark mt-4" href="{{ url_for('product_list') }}">Continue Shopping</a>
+            </div>
+            <div class="mb-5">
+                <p class="section-label">Order Summary</p>
+                <div class="glass p-4 summary-box">
+                    {% for product in cart_items %}
+                    <div class="d-flex align-items-center justify-content-between gap-3 {% if not loop.last %}border-bottom pb-3 mb-3{% endif %}">
+                        <div class="d-flex align-items-center gap-3">
+                            <img class="summary-image" src="{{ product.image }}" alt="{{ product.title }}">
+                            <div>
+                                <div class="product-name summary-product-name">{{ product.title }}</div>
+                                <div class="product-sub">{{ product.category }} x {{ product.qty }}</div>
+                                <div class="summary-unit-price">${{ "%.2f"|format(product.price) }} each</div>
+                            </div>
+                        </div>
+                        <div class="summary-line-total">
+                            <span>Subtotal</span>
+                            <strong>${{ "%.2f"|format(product.subtotal) }}</strong>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    <div class="d-flex justify-content-between border-top pt-3 mt-3 fw-bold">
+                        <span>Total</span>
+                        <span>${{ "%.2f"|format(subtotal) }}</span>
+                    </div>
+                </div>
+            </div>
+
+            {% elif cart_items %}
+            <form action="{{ url_for('payment') }}" method="post">
+                <div class="mb-5">
+                    <p class="section-label">1. Shipping Info</p>
+                    <div class="row g-3">
+                        <div class="col-12"><input type="text" name="full_name" class="form-control glass checkout-input" placeholder="Full Name" required></div>
+                        <div class="col-md-6"><input type="tel" name="phone" class="form-control glass checkout-input" placeholder="Phone" required></div>
+                        <div class="col-md-6"><input type="email" name="email" class="form-control glass checkout-input" placeholder="Email" required></div>
+                        <div class="col-12"><input type="text" name="address" class="form-control glass checkout-input" placeholder="Address" required></div>
+                        <div class="col-6"><input type="text" name="city" class="form-control glass checkout-input" placeholder="City" required></div>
+                        <div class="col-6"><input type="text" name="zip_code" class="form-control glass checkout-input" placeholder="Zip" required></div>
+                        <div class="col-12"><textarea name="note" class="form-control glass checkout-input checkout-note" placeholder="Delivery note"></textarea></div>
+                    </div>
+                </div>
+                <div class="mb-5">
+                    <p class="section-label">2. QR Code Payment</p>
+                    <div class="glass qr-payment-card">
+                        <div class="qr-code" aria-label="QR payment code"></div>
+                        <div>
+                            <h3 class="payment-title">Scan To Pay</h3>
+                            <p class="payment-copy">Use your banking app, then press Pay to submit your cart and shipping info.</p>
+                            <div class="payment-total">${{ "%.2f"|format(subtotal) }}</div>
+                        </div>
+                    </div>
+                    <input type="hidden" name="payment_method" value="qr_payment">
+                </div>
+                <div class="mb-5">
+                    <p class="section-label">3. Order Summary</p>
+                    <div class="glass p-4 summary-box">
+                        {% for product in cart_items %}
+                        <div class="d-flex align-items-center justify-content-between gap-3 {% if not loop.last %}border-bottom pb-3 mb-3{% endif %}">
+                            <div class="d-flex align-items-center gap-3">
+                                <img class="summary-image" src="{{ product.image }}" alt="{{ product.title }}">
+                                <div>
+                                    <div class="product-name summary-product-name">{{ product.title }}</div>
+                                    <div class="product-sub">{{ product.category }} x {{ product.qty }}</div>
+                                    <div class="summary-unit-price">${{ "%.2f"|format(product.price) }} each</div>
+                                </div>
+                            </div>
+                            <div class="summary-line-total">
+                                <span>Subtotal</span>
+                                <strong>${{ "%.2f"|format(product.subtotal) }}</strong>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        <div class="d-flex justify-content-between border-top pt-3 mt-3 fw-bold">
+                            <span>Total</span>
+                            <span>${{ "%.2f"|format(subtotal) }}</span>
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" class="btn-pill-dark w-100 justify-content-center py-3">Pay ${{ "%.2f"|format(subtotal) }}</button>
+            </form>
+            {% else %}
+            <div class="glass empty-checkout text-center">
+                <p class="section-label">Empty Bag</p>
+                <p class="mb-4">Add products to your cart before checkout.</p>
+                <a class="btn-pill-dark" href="{{ url_for('product_list') }}">Browse Products</a>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+
+    {% include "components/footer.html" %}
+</body>
+</html>
+

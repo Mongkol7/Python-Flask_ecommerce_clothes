@@ -1,0 +1,37 @@
+.search-section {
+  padding-top: 140px;
+}
+
+.empty-card {
+  background: rgba(255,255,255,0.78);
+  border: 1px solid rgba(255,255,255,0.9);
+  border-radius: var(--radius-card);
+  box-shadow: 0 10px 34px rgba(0,0,0,0.055), inset 0 1px 0 rgba(255,255,255,0.95);
+  padding: 42px;
+}
+
+.btn-explore {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 28px;
+  background: var(--black);
+  color: white;
+  border-radius: var(--radius-pill);
+  text-decoration: none;
+  font-size: 14px;
+  transition: 0.3s;
+}
+
+.btn-explore:hover {
+  background: #333;
+  color: white;
+  transform: translateY(-2px);
+}
+
+.search-highlight {
+  background: rgba(10,10,10,0.1);
+  border-radius: 6px;
+  color: var(--black);
+  padding: 0 3px;
+}
