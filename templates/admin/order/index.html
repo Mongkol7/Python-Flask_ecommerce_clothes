@@ -1,0 +1,457 @@
+{% extends 'admin/master.html' %}
+
+{% block page_header %}
+<div class="row align-items-center">
+  <div class="col-sm-6">
+    <span class="kicker-tag">Sales & Fulfillment</span>
+    <h2 class="page-main-heading">Order <em>Management</em></h2>
+  </div>
+  <div class="col-sm-6">
+    <ul class="breadcrumb-mk7 justify-content-sm-end mt-2 mt-sm-0">
+      <li><a href="{{ url_for('admin_bp.dashboard') }}">Admin</a></li>
+      <li class="breadcrumb-separator"><i class="bi bi-chevron-right"></i></li>
+      <li class="text-dark fw-semibold">Orders</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Metric Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-xl-3 col-sm-6">
+    <div class="card-mk7 p-3">
+      <div class="d-flex align-items-center justify-content-between">
+        <div>
+          <span class="kicker-tag" style="font-size: 10.5px;">All Records</span>
+          <h4 class="mb-0 fw-bold">{{ total_orders }}</h4>
+          <span class="text-secondary small">Total Orders</span>
+        </div>
+        <div class="rounded-circle d-flex align-items-center justify-content-center bg-light" style="width: 44px; height: 44px;">
+          <i class="bi bi-receipt-cutoff fs-4 text-dark"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-3 col-sm-6">
+    <div class="card-mk7 p-3">
+      <div class="d-flex align-items-center justify-content-between">
+        <div>
+          <span class="kicker-tag" style="font-size: 10.5px;">Requires Action</span>
+          <h4 class="mb-0 fw-bold text-warning">{{ pending_orders }}</h4>
+          <span class="text-secondary small">Pending Review</span>
+        </div>
+        <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 44px; height: 44px; background: #fff8e6;">
+          <i class="bi bi-hourglass-split fs-4 text-warning"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-3 col-sm-6">
+    <div class="card-mk7 p-3">
+      <div class="d-flex align-items-center justify-content-between">
+        <div>
+          <span class="kicker-tag" style="font-size: 10.5px;">Fulfilled</span>
+          <h4 class="mb-0 fw-bold text-success">{{ completed_orders }}</h4>
+          <span class="text-secondary small">Confirmed / Shipped</span>
+        </div>
+        <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 44px; height: 44px; background: #e8f5e9;">
+          <i class="bi bi-check-circle-fill fs-4 text-success"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-3 col-sm-6">
+    <div class="card-mk7 p-3">
+      <div class="d-flex align-items-center justify-content-between">
+        <div>
+          <span class="kicker-tag" style="font-size: 10.5px;">Gross Volume</span>
+          <h4 class="mb-0 fw-bold text-dark">{{ total_revenue|khr_format }}</h4>
+          <span class="text-secondary small">{{ total_revenue|usd_format }}</span>
+        </div>
+        <div class="rounded-circle d-flex align-items-center justify-content-center bg-light" style="width: 44px; height: 44px;">
+          <i class="bi bi-currency-dollar fs-4 text-dark"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Search & Filter Toolbar -->
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="card-mk7 p-3">
+      <form method="GET" action="{{ url_for('admin_bp.orders') }}" class="row g-2 align-items-center">
+        <div class="col-md-6 col-sm-12">
+          <div class="input-group">
+            <span class="input-group-text bg-transparent border-end-0" style="border-color: var(--border);">
+              <i class="bi bi-search text-muted"></i>
+            </span>
+            <input type="text" name="search" class="form-control form-control-mk7 border-start-0"
+              placeholder="Search by order #, customer name, email, or phone..." value="{{ search_query }}">
+          </div>
+        </div>
+
+        <div class="col-md-3 col-sm-6">
+          <select name="status" class="form-select form-select-mk7">
+            <option value="">All Statuses</option>
+            <option value="pending" {{ 'selected' if selected_status == 'pending' else '' }}>Pending</option>
+            <option value="confirmed" {{ 'selected' if selected_status == 'confirmed' else '' }}>Confirmed</option>
+            <option value="processing" {{ 'selected' if selected_status == 'processing' else '' }}>Processing</option>
+            <option value="shipped" {{ 'selected' if selected_status == 'shipped' else '' }}>Shipped</option>
+            <option value="delivered" {{ 'selected' if selected_status == 'delivered' else '' }}>Delivered</option>
+            <option value="cancelled" {{ 'selected' if selected_status == 'cancelled' else '' }}>Cancelled (Restocked)</option>
+          </select>
+        </div>
+
+        <div class="col-md-3 col-sm-6 d-flex gap-2">
+          <button type="submit" class="btn-pill-primary w-100 justify-content-center">
+            <i class="bi bi-funnel"></i> Filter
+          </button>
+          {% if search_query or selected_status %}
+          <a href="{{ url_for('admin_bp.orders') }}" class="btn-pill-outline text-nowrap">
+            <i class="bi bi-x-circle"></i>
+          </a>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="card-mk7">
+      <div class="card-mk7-header">
+        <div class="d-flex align-items-center gap-3">
+          <h3 class="card-mk7-title">Customer <em>Orders</em></h3>
+          <span class="badge-mk7 badge-role-user">{{ orders|length }} Orders</span>
+        </div>
+        <div>
+          <a href="{{ url_for('admin_bp.order_add') }}" class="btn-pill-primary">
+            <i class="bi bi-plus-lg"></i>
+            <span>Add User's Order</span>
+          </a>
+        </div>
+      </div>
+      <!-- /.card-header -->
+
+      <div class="table-responsive">
+        <table id="orders-table" class="table table-hover table-editorial align-middle mb-0">
+          <thead>
+            <tr>
+              <th style="width: 140px;">Order #</th>
+              <th>Customer</th>
+              <th>Items</th>
+              <th style="width: 110px;">Total</th>
+              <th style="width: 160px;">Status (Stock Synced)</th>
+              <th style="width: 130px;">Date</th>
+              <th style="width: 140px;" class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for o in orders %}
+            <tr id="order-row-{{ o.id }}">
+              <td>
+                <span class="fw-bold font-monospace text-dark" style="font-size: 13.5px;">
+                  {{ o.order_number }}
+                </span>
+                {% if o.user_id %}
+                <span class="badge bg-light text-muted d-block mt-1" style="font-size: 10px; width: fit-content;">Registered User</span>
+                {% else %}
+                <span class="badge bg-light text-secondary d-block mt-1" style="font-size: 10px; width: fit-content;">Guest</span>
+                {% endif %}
+              </td>
+              <td>
+                <div class="d-flex flex-column">
+                  <span class="fw-bold text-dark" style="font-size: 14px;">{{ o.customer_name }}</span>
+                  <span class="text-secondary small">{{ o.customer_email }}</span>
+                  {% if o.customer_phone %}
+                  <span class="text-muted" style="font-size: 11.5px;"><i class="bi bi-telephone"></i> {{ o.customer_phone }}</span>
+                  {% endif %}
+                </div>
+              </td>
+              <td>
+                <div class="d-flex align-items-center gap-1">
+                  <span class="badge-mk7 badge-role-admin me-1">{{ o.items|length }} items</span>
+                  {% for item in o.items[:3] %}
+                    {% if item.product_image %}
+                    <img src="{{ item.product_image }}" alt="{{ item.product_title }}" title="{{ item.product_title }} (x{{ item.quantity }})"
+                         class="rounded shadow-sm" style="width: 28px; height: 34px; object-fit: cover; border: 1px solid var(--border);">
+                    {% endif %}
+                  {% endfor %}
+                  {% if o.items|length > 3 %}
+                  <span class="text-muted small">+{{ o.items|length - 3 }}</span>
+                  {% endif %}
+                </div>
+              </td>
+              <td>
+                <span class="fw-bold text-dark" style="font-size: 14.5px;">
+                  {{ o.total|khr_format }}
+                </span>
+                <div class="text-muted small" style="font-size: 11px;">{{ o.total|usd_format }}</div>
+              </td>
+              <td>
+                <!-- Interactive status dropdown with auto stock-sync -->
+                <select class="form-select form-select-sm status-selector status-badge-{{ o.status }}"
+                        data-order-id="{{ o.id }}"
+                        style="border-radius: var(--radius-pill); font-size: 12px; font-weight: 600; padding: 4px 10px;">
+                  <option value="pending" {{ 'selected' if o.status == 'pending' else '' }}>Pending</option>
+                  <option value="confirmed" {{ 'selected' if o.status == 'confirmed' else '' }}>Confirmed</option>
+                  <option value="processing" {{ 'selected' if o.status == 'processing' else '' }}>Processing</option>
+                  <option value="shipped" {{ 'selected' if o.status == 'shipped' else '' }}>Shipped</option>
+                  <option value="delivered" {{ 'selected' if o.status == 'delivered' else '' }}>Delivered</option>
+                  <option value="cancelled" {{ 'selected' if o.status == 'cancelled' else '' }}>Cancelled (Restock)</option>
+                </select>
+              </td>
+              <td>
+                <span class="text-secondary small">{{ o.created_at.strftime('%Y-%m-%d %H:%M') if o.created_at else '—' }}</span>
+              </td>
+              <td class="text-end">
+                <div class="d-inline-flex gap-2">
+                  <button type="button" class="btn-action-edit btn-view-order" data-order-id="{{ o.id }}" title="View order details">
+                    <i class="bi bi-eye"></i> Details
+                  </button>
+                  <button type="button" class="btn-action-delete btn-delete-order"
+                    data-order-id="{{ o.id }}"
+                    data-order-number="{{ o.order_number }}"
+                    data-customer="{{ o.customer_name }}"
+                    data-total="{{ '%.2f'|format(o.total) }}"
+                    title="Delete order">
+                    <i class="bi bi-trash3"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="7" class="text-center py-5 text-muted">
+                <i class="bi bi-receipt fs-1 d-block mb-2 text-muted"></i>
+                No customer orders found. Click <strong>Add User's Order</strong> to manually record an order.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Order Detail Modal -->
+<div class="modal fade" id="orderDetailModal" tabindex="-1" aria-labelledby="orderDetailModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content modal-content-mk7">
+      <div class="modal-header modal-header-mk7">
+        <h5 class="modal-title fw-bold" id="orderDetailModalLabel">
+          <i class="bi bi-receipt me-2"></i>Order Breakdown: <span id="modalOrderNumber" class="text-primary font-monospace"></span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body modal-body-mk7 p-4">
+        <!-- Customer & Shipping Row -->
+        <div class="row g-3 mb-4 p-3 rounded" style="background: #faf8f5; border: 1px solid var(--border);">
+          <div class="col-md-6">
+            <span class="kicker-tag" style="font-size: 10px;">Customer Profile</span>
+            <h6 class="fw-bold mb-1" id="modalCustomerName"></h6>
+            <div class="small text-secondary" id="modalCustomerEmail"></div>
+            <div class="small text-secondary" id="modalCustomerPhone"></div>
+          </div>
+          <div class="col-md-6">
+            <span class="kicker-tag" style="font-size: 10px;">Delivery Destination</span>
+            <div class="small fw-semibold text-dark" id="modalShippingAddress"></div>
+            <div class="small text-secondary mt-1">Payment: <span id="modalPaymentMethod" class="badge bg-light text-dark text-uppercase"></span></div>
+            <div class="small text-muted" id="modalNotes"></div>
+          </div>
+        </div>
+
+        <!-- Ordered Items Table -->
+        <h6 class="fw-bold mb-2">Purchased Items & Inventory Impact</h6>
+        <div class="table-responsive mb-3">
+          <table class="table table-bordered table-sm align-middle">
+            <thead class="table-light small">
+              <tr>
+                <th style="width: 50px;">Item</th>
+                <th>Product Description</th>
+                <th style="width: 100px;">Price</th>
+                <th style="width: 80px;">Qty</th>
+                <th style="width: 110px;" class="text-end">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody id="modalItemsBody">
+              <!-- Rendered dynamically -->
+            </tbody>
+            <tfoot>
+              <tr>
+                <th colspan="4" class="text-end fw-bold">Grand Total:</th>
+                <th class="text-end fw-bold text-primary fs-6" id="modalOrderTotal"></th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer modal-footer-mk7">
+        <button type="button" class="btn-pill-outline" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteOrderModal" tabindex="-1" aria-labelledby="deleteOrderModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content modal-content-mk7">
+      <div class="modal-header modal-header-mk7">
+        <h5 class="modal-title fw-bold" id="deleteOrderModalLabel">
+          <i class="bi bi-exclamation-circle text-danger me-2"></i>Delete Customer Order
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body modal-body-mk7 text-center">
+        <h5 class="fw-bold mb-2">Delete <span id="deleteOrderNum" class="text-dark font-monospace"></span>?</h5>
+        <p class="text-muted small">Customer: <strong id="deleteOrderCustomer"></strong> · Amount: $<span id="deleteOrderTotal"></span></p>
+        <div class="alert alert-info small py-2 px-3 text-start">
+          <i class="bi bi-info-circle-fill me-1"></i>
+          Associated product inventory will be automatically <strong>restocked</strong> in real time.
+        </div>
+      </div>
+      <div class="modal-footer modal-footer-mk7 d-flex justify-content-between">
+        <button type="button" class="btn-pill-danger" id="confirmDeleteOrderBtn">
+          <i class="bi bi-trash3"></i> Delete & Restock
+        </button>
+        <button type="button" class="btn-pill-outline" data-bs-dismiss="modal">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Axios CDN -->
+<script src="https://cdn.jsdelivr.net/npm/axios@1.7.9/dist/axios.min.js"></script>
+
+<script>
+  axios.defaults.headers.common['X-CSRFToken'] = '{{ csrf_token() }}';
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const detailModal = new bootstrap.Modal(document.getElementById('orderDetailModal'));
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteOrderModal'));
+    let currentOrderId = null;
+
+    // View Order Details
+    document.querySelectorAll('.btn-view-order').forEach(btn => {
+      btn.addEventListener('click', function () {
+        const orderId = this.getAttribute('data-order-id');
+        axios.get('/admin/orders/' + orderId)
+          .then(res => {
+            const o = res.data.order;
+            document.getElementById('modalOrderNumber').textContent = o.order_number;
+            document.getElementById('modalCustomerName').textContent = o.customer_name;
+            document.getElementById('modalCustomerEmail').textContent = o.customer_email;
+            document.getElementById('modalCustomerPhone').textContent = o.customer_phone || 'No phone';
+            document.getElementById('modalShippingAddress').textContent = `${o.shipping_address || 'No address'}, ${o.city || ''} ${o.zip_code || ''}`;
+            document.getElementById('modalPaymentMethod').textContent = o.payment_method;
+            document.getElementById('modalNotes').textContent = o.notes ? `Note: ${o.notes}` : '';
+            const orderTotalNum = parseFloat(o.total) || 0;
+            const orderTotalUSD = (orderTotalNum / 4000).toFixed(2);
+            document.getElementById('modalOrderTotal').innerHTML = `${Math.round(orderTotalNum).toLocaleString()} ៛ <span class="text-muted small fw-normal ms-1">(≈ $${orderTotalUSD})</span>`;
+
+            const tbody = document.getElementById('modalItemsBody');
+            tbody.innerHTML = '';
+            o.items.forEach(item => {
+              const itemPrice = parseFloat(item.product_price) || 0;
+              const itemSub = parseFloat(item.subtotal) || 0;
+              const tr = document.createElement('tr');
+              tr.innerHTML = `
+                <td>
+                  <img src="${item.product_image || '/static/image/product/Man_Brown01.jpg'}" class="rounded" width="36" height="44" style="object-fit:cover;">
+                </td>
+                <td>
+                  <div class="fw-semibold">${item.product_title}</div>
+                  <div class="text-muted small">Product ID: #${item.product_id}</div>
+                </td>
+                <td>
+                  <div>${Math.round(itemPrice).toLocaleString()} ៛</div>
+                  <div class="text-muted small">≈ $${(itemPrice / 4000).toFixed(2)}</div>
+                </td>
+                <td><span class="badge bg-secondary">${item.quantity}</span></td>
+                <td class="text-end fw-bold">
+                  <div>${Math.round(itemSub).toLocaleString()} ៛</div>
+                  <div class="text-muted small fw-normal">≈ $${(itemSub / 4000).toFixed(2)}</div>
+                </td>
+              `;
+              tbody.appendChild(tr);
+            });
+
+            detailModal.show();
+          })
+          .catch(err => alert('Failed to fetch order details.'));
+      });
+    });
+
+    // Real-time Status Update with Automatic Stock Synchronization
+    document.querySelectorAll('.status-selector').forEach(sel => {
+      sel.addEventListener('change', function () {
+        const orderId = this.getAttribute('data-order-id');
+        const newStatus = this.value;
+
+        axios.post('/admin/orders/' + orderId + '/status', { status: newStatus })
+          .then(res => {
+            // Update styling based on new status
+            if (newStatus === 'delivered' || newStatus === 'confirmed') {
+              sel.style.background = '#e8f5e9';
+              sel.style.color = '#2e7d32';
+              sel.style.borderColor = '#c8e6c9';
+            } else if (newStatus === 'pending') {
+              sel.style.background = '#fff8e6';
+              sel.style.color = '#b78103';
+              sel.style.borderColor = '#ffeeba';
+            } else if (newStatus === 'cancelled') {
+              sel.style.background = '#fdf2f2';
+              sel.style.color = '#dc3545';
+              sel.style.borderColor = '#f8d7da';
+            } else {
+              sel.style.background = '#f0f4f8';
+              sel.style.color = '#1a73e8';
+              sel.style.borderColor = '#d2e3fc';
+            }
+          })
+          .catch(err => {
+            alert('Failed to update status: ' + (err.response?.data?.message || 'Error occurred.'));
+          });
+      });
+    });
+
+    // Delete Order
+    document.querySelectorAll('.btn-delete-order').forEach(btn => {
+      btn.addEventListener('click', function () {
+        currentOrderId = this.getAttribute('data-order-id');
+        document.getElementById('deleteOrderNum').textContent = this.getAttribute('data-order-number');
+        document.getElementById('deleteOrderCustomer').textContent = this.getAttribute('data-customer');
+        document.getElementById('deleteOrderTotal').textContent = this.getAttribute('data-total');
+        deleteModal.show();
+      });
+    });
+
+    document.getElementById('confirmDeleteOrderBtn').addEventListener('click', function () {
+      if (!currentOrderId) return;
+      this.disabled = true;
+      this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Deleting...';
+
+      axios.post('/admin/orders/' + currentOrderId + '/delete')
+        .then(res => {
+          const row = document.getElementById('order-row-' + currentOrderId);
+          if (row) row.remove();
+          deleteModal.hide();
+        })
+        .catch(err => alert('Failed to delete order.'))
+        .finally(() => {
+          this.disabled = false;
+          this.innerHTML = '<i class="bi bi-trash3"></i> Delete & Restock';
+          currentOrderId = null;
+        });
+    });
+  });
+</script>
+{% endblock %}

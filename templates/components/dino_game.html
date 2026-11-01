@@ -1,0 +1,771 @@
+<!-- Dino Runner Arcade Component (MK7 Luxury Offline Edition) -->
+<div class="dino-mini-window" id="dinoMiniWindow">
+  <!-- Window Header Bar -->
+  <div class="dino-window-header">
+    <div class="dino-header-left">
+      <span class="dino-status-dot"></span>
+      <span class="dino-title"><strong>T-Rex</strong> Runner</span>
+      <span class="dino-badge">Offline Arcade</span>
+    </div>
+    <div class="dino-score-wrap">
+      <span class="dino-hi-score" id="dinoHiScore">HI 00000</span>
+      <span class="dino-current-score" id="dinoScore">00000</span>
+      <button type="button" class="dino-sound-btn" id="dinoSoundBtn" title="Toggle sound (Muted by default)">
+        <i class="bi bi-volume-mute" id="dinoSoundIcon"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Game Stage Canvas -->
+  <div class="dino-canvas-wrap" id="dinoCanvasWrap" tabindex="0" title="Click or Press Space to Jump">
+    <canvas id="dinoCanvas" width="600" height="140"></canvas>
+
+    <!-- Start Banner / Idle Prompt -->
+    <div class="dino-overlay" id="dinoStartOverlay">
+      <div class="dino-prompt-pill">
+        <i class="bi bi-controller"></i>
+        <span>Press <kbd>Space</kbd> or <strong>Tap</strong> to Play</span>
+      </div>
+    </div>
+
+    <!-- Game Over Banner -->
+    <div class="dino-overlay d-none" id="dinoGameOverOverlay">
+      <div class="dino-gameover-card">
+        <div class="dino-gameover-title">GAME OVER</div>
+        <button type="button" class="dino-restart-btn" id="dinoRestartBtn">
+          <i class="bi bi-arrow-clockwise"></i> Play Again
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Window Footer Tips -->
+  <div class="dino-window-footer">
+    <span><i class="bi bi-keyboard"></i> <kbd>Space</kbd> / <kbd>&uarr;</kbd> Jump &bull; <kbd>&darr;</kbd> Duck</span>
+    <span class="dino-footer-hint">Pass the time while waiting</span>
+  </div>
+</div>
+
+<script>
+(function() {
+  const canvas = document.getElementById("dinoCanvas");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const wrap = document.getElementById("dinoCanvasWrap");
+  const startOverlay = document.getElementById("dinoStartOverlay");
+  const gameOverOverlay = document.getElementById("dinoGameOverOverlay");
+  const restartBtn = document.getElementById("dinoRestartBtn");
+  const scoreEl = document.getElementById("dinoScore");
+  const hiScoreEl = document.getElementById("dinoHiScore");
+  const soundBtn = document.getElementById("dinoSoundBtn");
+  const soundIcon = document.getElementById("dinoSoundIcon");
+
+  // Web Audio Context for Authentic Retro Sound Effects
+  let audioCtx = null;
+  let soundEnabled = localStorage.getItem("mk7_dino_sound") === "true";
+
+  function updateSoundUI() {
+    if (soundIcon) {
+      soundIcon.className = soundEnabled ? "bi bi-volume-up" : "bi bi-volume-mute";
+    }
+    if (soundBtn) {
+      soundBtn.title = soundEnabled ? "Sound: On" : "Sound: Muted (Click to enable)";
+    }
+  }
+  updateSoundUI();
+
+  if (soundBtn) {
+    soundBtn.addEventListener("click", function(e) {
+      e.stopPropagation();
+      soundEnabled = !soundEnabled;
+      localStorage.setItem("mk7_dino_sound", soundEnabled ? "true" : "false");
+      updateSoundUI();
+      if (soundEnabled && !audioCtx) initAudio();
+    });
+  }
+
+  function initAudio() {
+    try {
+      const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtxClass && !audioCtx) {
+        audioCtx = new AudioCtxClass();
+      }
+      if (audioCtx && audioCtx.state === "suspended") {
+        audioCtx.resume();
+      }
+    } catch(err) {}
+  }
+
+  function playSound(type) {
+    if (!soundEnabled) return;
+    initAudio();
+    if (!audioCtx) return;
+    try {
+      const now = audioCtx.currentTime;
+      if (type === "jump") {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(280, now);
+        osc.frequency.exponentialRampToValueAtTime(700, now + 0.08);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.08);
+      } else if (type === "score") {
+        [0, 0.08].forEach((delay, idx) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = "square";
+          osc.frequency.setValueAtTime(idx === 0 ? 660 : 880, now + delay);
+          gain.gain.setValueAtTime(0.08, now + delay);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.08);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now + delay);
+          osc.stop(now + delay + 0.08);
+        });
+      } else if (type === "crash") {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(140, now);
+        osc.frequency.exponentialRampToValueAtTime(45, now + 0.22);
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.22);
+      }
+    } catch(e) {}
+  }
+
+  // Pixel Bitmaps
+  const DINO_STAND = [
+    "            ######### ",
+    "           ###########",
+    "           #### # ####",
+    "           ###########",
+    "           ###########",
+    "           ######     ",
+    "           #########  ",
+    "#         ############",
+    "##       #############",
+    "###     ##############",
+    "####################  ",
+    " ##################   ",
+    "  ################    ",
+    "   ##############     ",
+    "    ############      ",
+    "     ##########       ",
+    "      ########        ",
+    "       ######         ",
+    "       ##  ##         ",
+    "       ##  ##         ",
+    "       ##  ##         ",
+    "       #    #         ",
+    "       ##   ##        "
+  ];
+
+  const DINO_RUN_1 = [
+    "            ######### ",
+    "           ###########",
+    "           #### # ####",
+    "           ###########",
+    "           ###########",
+    "           ######     ",
+    "           #########  ",
+    "#         ############",
+    "##       #############",
+    "###     ##############",
+    "####################  ",
+    " ##################   ",
+    "  ################    ",
+    "   ##############     ",
+    "    ############      ",
+    "     ##########       ",
+    "      ########        ",
+    "       ######         ",
+    "       ##  ##         ",
+    "       ##   #         ",
+    "       ##             ",
+    "        #             ",
+    "        ##            "
+  ];
+
+  const DINO_RUN_2 = [
+    "            ######### ",
+    "           ###########",
+    "           #### # ####",
+    "           ###########",
+    "           ###########",
+    "           ######     ",
+    "           #########  ",
+    "#         ############",
+    "##       #############",
+    "###     ##############",
+    "####################  ",
+    " ##################   ",
+    "  ################    ",
+    "   ##############     ",
+    "    ############      ",
+    "     ##########       ",
+    "      ########        ",
+    "       ######         ",
+    "       ##  ##         ",
+    "        #  ##         ",
+    "            ##        ",
+    "             #        ",
+    "            ##        "
+  ];
+
+  const DINO_DUCK_1 = [
+    "                     ################# ",
+    "                    ###################",
+    "                    ######## # ########",
+    "                    ###################",
+    "                    ###################",
+    "#                  ###########         ",
+    "##                #############        ",
+    "###################################    ",
+    " #################################     ",
+    "  ###############################      ",
+    "   #############################       ",
+    "    ###########################        ",
+    "     #########################         ",
+    "        ######  ######                 ",
+    "        ##   #  ##                     ",
+    "        ##       #                     ",
+    "         #       ##                    "
+  ];
+
+  const DINO_DUCK_2 = [
+    "                     ################# ",
+    "                    ###################",
+    "                    ######## # ########",
+    "                    ###################",
+    "                    ###################",
+    "#                  ###########         ",
+    "##                #############        ",
+    "###################################    ",
+    " #################################     ",
+    "  ###############################      ",
+    "   #############################       ",
+    "    ###########################        ",
+    "     #########################         ",
+    "        ######  ######                 ",
+    "        ##      #   ##                 ",
+    "         #          ##                 ",
+    "        ##           #                 "
+  ];
+
+  const DINO_CRASH = [
+    "            ######### ",
+    "           ###########",
+    "           ## # # ####",
+    "           ### # #####",
+    "           ###########",
+    "           ######     ",
+    "           #########  ",
+    "#         ############",
+    "##       #############",
+    "###     ##############",
+    "####################  ",
+    " ##################   ",
+    "  ################    ",
+    "   ##############     ",
+    "    ############      ",
+    "     ##########       ",
+    "      ########        ",
+    "       ######         ",
+    "       ##  ##         ",
+    "       ##  ##         ",
+    "       ##  ##         ",
+    "       #    #         ",
+    "       ##   ##        "
+  ];
+
+  const CACTUS_SMALL = [
+    "   ###   ",
+    "   ###   ",
+    " # ###   ",
+    " # ### # ",
+    " # ### # ",
+    " ##### # ",
+    "   ##### ",
+    "   ###   ",
+    "   ###   ",
+    "   ###   ",
+    "   ###   ",
+    "   ###   ",
+    "   ###   ",
+    "   ###   ",
+    "   ###   "
+  ];
+
+  const CACTUS_DOUBLE = [
+    "   ###      ###   ",
+    "   ###      ###   ",
+    " # ###    # ###   ",
+    " # ### #  # ### # ",
+    " # ### #  # ### # ",
+    " ##### #  ##### # ",
+    "   #####    ##### ",
+    "   ###      ###   ",
+    "   ###      ###   ",
+    "   ###      ###   ",
+    "   ###      ###   ",
+    "   ###      ###   ",
+    "   ###      ###   ",
+    "   ###      ###   ",
+    "   ###      ###   "
+  ];
+
+  const CACTUS_LARGE = [
+    "    ####    ",
+    "    ####    ",
+    " ## ####    ",
+    " ## #### ## ",
+    " ## #### ## ",
+    " ###### ## ",
+    "    ###### ",
+    "    ####    ",
+    "    ####    ",
+    "    ####    ",
+    "    ####    ",
+    "    ####    ",
+    "    ####    ",
+    "    ####    ",
+    "    ####    ",
+    "    ####    ",
+    "    ####    ",
+    "    ####    ",
+    "    ####    "
+  ];
+
+  const BIRD_1 = [
+    "             ###    ",
+    "            #####   ",
+    "          ########  ",
+    "         #########  ",
+    "   #   ###########  ",
+    "  ### ############  ",
+    " #################  ",
+    "################    ",
+    " ##############     ",
+    "       #####        ",
+    "        ###         "
+  ];
+
+  const BIRD_2 = [
+    "             ###    ",
+    "            #####   ",
+    "          ########  ",
+    "         #########  ",
+    "       ###########  ",
+    " #################  ",
+    "##################  ",
+    " ################## ",
+    "  ###   ##########  ",
+    "   #     #####      ",
+    "          ###       "
+  ];
+
+  const CLOUD = [
+    "       ######      ",
+    "     ##########    ",
+    "   ##############  ",
+    " ##################",
+    "###################"
+  ];
+
+  function drawBitmap(bitmap, x, y, scale, color) {
+    ctx.fillStyle = color;
+    const h = bitmap.length;
+    for (let r = 0; r < h; r++) {
+      const row = bitmap[r];
+      const w = row.length;
+      for (let c = 0; c < w; c++) {
+        if (row[c] === "#") {
+          ctx.fillRect(Math.round(x + c * scale), Math.round(y + r * scale), Math.ceil(scale), Math.ceil(scale));
+        }
+      }
+    }
+  }
+
+  // Game Constants & State
+  const WIDTH = 600;
+  const HEIGHT = 140;
+  const GROUND_Y = 122;
+
+  let state = "idle"; // "idle" | "running" | "gameover"
+  let score = 0;
+  let highScore = parseInt(localStorage.getItem("mk7_dino_hi_score") || "0", 10);
+  let distance = 0;
+  let speed = 6;
+  let animFrame = 0;
+  let lastScoreSound = 0;
+
+  // Day/Night Cycle
+  let isNight = false;
+
+  // Dino Object
+  const dino = {
+    x: 45,
+    y: GROUND_Y - 37,
+    vy: 0,
+    width: 36,
+    height: 37,
+    duckWidth: 55,
+    duckHeight: 27,
+    isGrounded: true,
+    isDucking: false,
+    jump() {
+      if (this.isGrounded && state === "running") {
+        this.vy = -10.8;
+        this.isGrounded = false;
+        playSound("jump");
+      }
+    },
+    update() {
+      if (!this.isGrounded) {
+        this.vy += 0.58; // Gravity
+        this.y += this.vy;
+        const currentH = this.isDucking ? this.duckHeight : this.height;
+        if (this.y >= GROUND_Y - currentH) {
+          this.y = GROUND_Y - currentH;
+          this.vy = 0;
+          this.isGrounded = true;
+        }
+      } else {
+        const currentH = this.isDucking ? this.duckHeight : this.height;
+        this.y = GROUND_Y - currentH;
+      }
+    },
+    getHitbox() {
+      const w = this.isDucking ? this.duckWidth : this.width;
+      const h = this.isDucking ? this.duckHeight : this.height;
+      // Inset bounding box for forgiving collision
+      return {
+        x: this.x + 6,
+        y: this.y + 4,
+        w: w - 12,
+        h: h - 8
+      };
+    }
+  };
+
+  // Environment: Clouds & Obstacles
+  let clouds = [
+    { x: 180, y: 30, speed: 0.8 },
+    { x: 420, y: 48, speed: 0.6 }
+  ];
+
+  let obstacles = [];
+  let obstacleTimer = 80;
+
+  // Ground Texture Dots
+  let groundBumps = [];
+  for (let i = 0; i < WIDTH; i += 22) {
+    groundBumps.push({ x: i, len: (i % 7 === 0 ? 12 : 4), yOffset: (i % 3 === 0 ? 3 : 6) });
+  }
+
+  const START_SPEED = 3.6; // Gentle, slow start for easy initial jumps
+  const MAX_SPEED = 13.0;  // Thrilling high-speed sprint for longer runs
+
+  function resetGame() {
+    score = 0;
+    distance = 0;
+    speed = START_SPEED;
+    animFrame = 0;
+    lastScoreSound = 0;
+    obstacles = [];
+    obstacleTimer = 110; // Generous 2-second warm-up before first obstacle
+    dino.y = GROUND_Y - dino.height;
+    dino.vy = 0;
+    dino.isGrounded = true;
+    dino.isDucking = false;
+    isNight = false;
+    updateScoreDisplay();
+  }
+
+  function formatScore(num) {
+    return String(Math.floor(num)).padStart(5, "0");
+  }
+
+  function updateScoreDisplay() {
+    if (scoreEl) scoreEl.textContent = formatScore(score);
+    if (hiScoreEl) hiScoreEl.textContent = "HI " + formatScore(highScore);
+  }
+  updateScoreDisplay();
+
+  function spawnObstacle() {
+    const r = Math.random();
+    let type = "small";
+    let scale = 1.6;
+    let bitmap = CACTUS_SMALL;
+    let y = GROUND_Y - (15 * scale);
+    let w = 9 * scale;
+    let h = 15 * scale;
+
+    if (score > 300 && r < 0.28) {
+      // Pterodactyl Bird
+      type = "bird";
+      scale = 1.6;
+      bitmap = BIRD_1;
+      const flyHigh = Math.random() < 0.5;
+      y = flyHigh ? (GROUND_Y - 56) : (GROUND_Y - 32);
+      w = 19 * scale;
+      h = 11 * scale;
+    } else if (r < 0.55) {
+      type = "small";
+      scale = 1.6;
+      bitmap = CACTUS_SMALL;
+      y = GROUND_Y - (15 * scale);
+      w = 9 * scale;
+      h = 15 * scale;
+    } else if (r < 0.8) {
+      type = "large";
+      scale = 1.6;
+      bitmap = CACTUS_LARGE;
+      y = GROUND_Y - (19 * scale);
+      w = 12 * scale;
+      h = 19 * scale;
+    } else {
+      type = "double";
+      scale = 1.6;
+      bitmap = CACTUS_DOUBLE;
+      y = GROUND_Y - (15 * scale);
+      w = 18 * scale;
+      h = 15 * scale;
+    }
+
+    obstacles.push({
+      type,
+      x: WIDTH + 20,
+      y,
+      w,
+      h,
+      scale,
+      bitmap,
+      frame: 0
+    });
+  }
+
+  function checkCollision(boxA, boxB) {
+    return (
+      boxA.x < boxB.x + boxB.w &&
+      boxA.x + boxA.w > boxB.x &&
+      boxA.y < boxB.y + boxB.h &&
+      boxA.y + boxA.h > boxB.y
+    );
+  }
+
+  function startGame() {
+    if (state === "running") return;
+    initAudio();
+    resetGame();
+    state = "running";
+    if (startOverlay) startOverlay.classList.add("d-none");
+    if (gameOverOverlay) gameOverOverlay.classList.add("d-none");
+    dino.jump();
+  }
+
+  function gameOver() {
+    state = "gameover";
+    playSound("crash");
+    if (score > highScore) {
+      highScore = score;
+      localStorage.setItem("mk7_dino_hi_score", String(highScore));
+      updateScoreDisplay();
+    }
+    if (gameOverOverlay) gameOverOverlay.classList.remove("d-none");
+  }
+
+  // Input Listeners
+  window.addEventListener("keydown", function(e) {
+    const target = e.target;
+    // Don't intercept typing in input or textarea
+    if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
+
+    if (e.code === "Space" || e.code === "ArrowUp" || e.key === " ") {
+      e.preventDefault();
+      if (state === "idle") {
+        startGame();
+      } else if (state === "running") {
+        dino.jump();
+      } else if (state === "gameover") {
+        startGame();
+      }
+    } else if (e.code === "ArrowDown") {
+      if (state === "running") {
+        e.preventDefault();
+        dino.isDucking = true;
+      }
+    }
+  });
+
+  window.addEventListener("keyup", function(e) {
+    if (e.code === "ArrowDown") {
+      dino.isDucking = false;
+    }
+  });
+
+  if (wrap) {
+    wrap.addEventListener("pointerdown", function(e) {
+      if (e.target && e.target.closest("#dinoSoundBtn")) return;
+      if (state === "idle" || state === "gameover") {
+        startGame();
+      } else if (state === "running") {
+        dino.jump();
+      }
+    });
+  }
+
+  if (restartBtn) {
+    restartBtn.addEventListener("click", function(e) {
+      e.stopPropagation();
+      startGame();
+    });
+  }
+
+  // Animation Loop
+  function tick() {
+    animFrame++;
+
+    // Color Palette
+    const mainColor = isNight ? "#f3f3f3" : "#535353";
+    const bgColor = isNight ? "#1e1e1e" : "#fdfcf9";
+
+    // Clear Canvas
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+    // Update Game Logic if Running
+    if (state === "running") {
+      // Score advances smoothly with distance
+      distance += speed * 0.085;
+      score = Math.floor(distance);
+      updateScoreDisplay();
+
+      // Check for 100-point milestone beep
+      if (score > 0 && score % 100 === 0 && score !== lastScoreSound) {
+        lastScoreSound = score;
+        playSound("score");
+      }
+
+      // PROGRESSIVE SPEED ACCELERATION:
+      // Starts gently at START_SPEED (3.6) and gradually accelerates to MAX_SPEED (13.0) as score increases
+      speed = Math.min(MAX_SPEED, START_SPEED + Math.pow(score, 0.72) * 0.065);
+
+      // Day / Night transition every 700 pts
+      isNight = (Math.floor(score / 700) % 2 === 1);
+
+      // Clouds move at calm parallax speed
+      clouds.forEach(c => {
+        c.x -= (c.speed * (speed / START_SPEED) * 0.7);
+        if (c.x < -60) c.x = WIDTH + 40;
+      });
+
+      // Ground bumps scroll at current ground speed
+      groundBumps.forEach(b => {
+        b.x -= speed;
+        if (b.x < -20) b.x = WIDTH + Math.random() * 20;
+      });
+
+      // Dino physics
+      dino.update();
+
+      // Obstacle spawner: gap scales with speed to guarantee fair jump distance
+      obstacleTimer -= 1;
+      if (obstacleTimer <= 0) {
+        spawnObstacle();
+        const baseGap = 130 + speed * 16;
+        const randomGap = Math.random() * (speed * 12);
+        obstacleTimer = Math.floor((baseGap + randomGap) / speed);
+      }
+
+      // Update Obstacles & Collision Check
+      const dBox = dino.getHitbox();
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        const obs = obstacles[i];
+        obs.x -= speed;
+        if (obs.type === "bird") {
+          obs.frame++;
+          obs.bitmap = (Math.floor(obs.frame / 12) % 2 === 0) ? BIRD_1 : BIRD_2;
+        }
+
+        const oBox = {
+          x: obs.x + 3,
+          y: obs.y + 3,
+          w: obs.w - 6,
+          h: obs.h - 6
+        };
+
+        if (checkCollision(dBox, oBox)) {
+          gameOver();
+          break;
+        }
+
+        if (obs.x + obs.w < -30) {
+          obstacles.splice(i, 1);
+        }
+      }
+    }
+
+    // DRAWING SCENE
+
+    // 1. Clouds
+    ctx.fillStyle = isNight ? "#444" : "#d8d6cf";
+    clouds.forEach(c => {
+      drawBitmap(CLOUD, c.x, c.y, 1.4, isNight ? "#444" : "#d8d6cf");
+    });
+
+    // 2. Ground Horizon Line
+    ctx.strokeStyle = mainColor;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, GROUND_Y);
+    ctx.lineTo(WIDTH, GROUND_Y);
+    ctx.stroke();
+
+    // Ground detail dots/lines
+    ctx.fillStyle = isNight ? "#555" : "#8a8882";
+    groundBumps.forEach(b => {
+      ctx.fillRect(b.x, GROUND_Y + b.yOffset, b.len, 1.5);
+    });
+
+    // 3. Obstacles
+    obstacles.forEach(obs => {
+      drawBitmap(obs.bitmap, obs.x, obs.y, obs.scale, mainColor);
+    });
+
+    // 4. Dino Character
+    let currentDinoBitmap = DINO_STAND;
+    let drawScale = 1.6;
+
+    if (state === "gameover") {
+      currentDinoBitmap = DINO_CRASH;
+    } else if (!dino.isGrounded) {
+      currentDinoBitmap = DINO_STAND;
+    } else if (dino.isDucking) {
+      const duckFrame = Math.floor(animFrame / 6) % 2;
+      currentDinoBitmap = duckFrame === 0 ? DINO_DUCK_1 : DINO_DUCK_2;
+    } else if (state === "running") {
+      // Footsteps animate slower when walking/jogging, and sprint rapidly as speed accelerates
+      const stepInterval = Math.max(3, Math.floor(26 / speed));
+      const runFrame = Math.floor(animFrame / stepInterval) % 2;
+      currentDinoBitmap = runFrame === 0 ? DINO_RUN_1 : DINO_RUN_2;
+    }
+
+    drawBitmap(currentDinoBitmap, dino.x, dino.y, drawScale, mainColor);
+
+    requestAnimationFrame(tick);
+  }
+
+  requestAnimationFrame(tick);
+})();
+</script>

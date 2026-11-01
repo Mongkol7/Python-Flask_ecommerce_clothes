@@ -1,0 +1,454 @@
+{% extends 'admin/master.html' %}
+
+{% block page_header %}
+<div class="row align-items-center">
+  <div class="col-sm-6">
+    <span class="kicker-tag">Live System Overview</span>
+    <h2 class="page-main-heading">Dashboard <em>Analytics</em></h2>
+  </div>
+  <div class="col-sm-6">
+    <ul class="breadcrumb-mk7 justify-content-sm-end mt-2 mt-sm-0">
+      <li><a href="{{ url_for('admin_bp.dashboard') }}">Admin</a></li>
+      <li class="breadcrumb-separator"><i class="bi bi-chevron-right"></i></li>
+      <li class="text-dark fw-semibold">Dashboard</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<!--begin::Stat Metric Cards-->
+<div class="row g-4">
+  <!-- Stat Card 1: Gross Revenue -->
+  <div class="col-lg-3 col-sm-6">
+    <div class="stat-card-luxury">
+      <span class="stat-card-kicker">Revenue & Sales</span>
+      <div class="stat-card-value">{{ stats.total_revenue|khr_format }}</div>
+      <div class="text-muted small mb-2">{{ stats.total_revenue|usd_format }}</div>
+      <div class="stat-card-icon-bubble">
+        <i class="bi bi-currency-dollar"></i>
+      </div>
+      <div>
+        <span class="stat-card-badge badge-up">
+          <i class="bi bi-check-circle-fill"></i> Live
+        </span>
+        <span class="text-muted ms-1" style="font-size: 12px;">{{ stats.total_orders }} orders placed</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stat Card 2: Orders & Fulfillment -->
+  <div class="col-lg-3 col-sm-6">
+    <div class="stat-card-luxury">
+      <span class="stat-card-kicker">Orders & Fulfillment</span>
+      <div class="stat-card-value">{{ stats.total_orders }}</div>
+      <div class="stat-card-icon-bubble">
+        <i class="bi bi-bag-check"></i>
+      </div>
+      <div>
+        <span class="stat-card-badge {% if stats.pending_orders > 0 %}badge-up{% else %}badge-neutral{% endif %}">
+          {{ stats.pending_orders }} Pending
+        </span>
+        <span class="text-muted ms-1" style="font-size: 12px;">{{ stats.confirmed_orders }} confirmed</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stat Card 3: Products & Stock Inventory -->
+  <div class="col-lg-3 col-sm-6">
+    <div class="stat-card-luxury">
+      <span class="stat-card-kicker">Catalog & Stock</span>
+      <div class="stat-card-value">{{ stats.total_products }}</div>
+      <div class="stat-card-icon-bubble">
+        <i class="bi bi-box-seam"></i>
+      </div>
+      <div>
+        <span class="stat-card-badge {% if stats.out_of_stock_count > 0 %}badge-neutral{% else %}badge-up{% endif %}">
+          {{ stats.total_stock }} Units
+        </span>
+        <span class="text-muted ms-1" style="font-size: 12px;">total in stock</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stat Card 4: Registered Customer Accounts -->
+  <div class="col-lg-3 col-sm-6">
+    <div class="stat-card-luxury">
+      <span class="stat-card-kicker">Customer Accounts</span>
+      <div class="stat-card-value">{{ stats.total_users }}</div>
+      <div class="stat-card-icon-bubble">
+        <i class="bi bi-people"></i>
+      </div>
+      <div>
+        <span class="stat-card-badge badge-neutral">
+          <i class="bi bi-person-badge"></i> {{ stats.customer_users }} Shoppers
+        </span>
+        <span class="text-muted ms-1" style="font-size: 12px;">{{ stats.admin_users }} admins</span>
+      </div>
+    </div>
+  </div>
+</div>
+<!--end::Stat Metric Cards-->
+
+<!--begin::Main Charts & Quick Panels-->
+<div class="row g-4 mt-1">
+  <!-- Revenue & Orders Chart -->
+  <div class="col-lg-8">
+    <div class="card-mk7">
+      <div class="card-mk7-header">
+        <div>
+          <span class="kicker-tag">Financial Trajectory</span>
+          <h3 class="card-mk7-title">Sales & Orders <em>Trends</em></h3>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge-mk7 badge-role-user">Past 7 Days Live</span>
+        </div>
+      </div>
+      <div class="card-mk7-body">
+        <div id="revenue-chart"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Management Shortcuts Panel -->
+  <div class="col-lg-4">
+    <div class="card-mk7 h-100">
+      <div class="card-mk7-header">
+        <div>
+          <span class="kicker-tag">Shortcuts</span>
+          <h3 class="card-mk7-title">Management <em>Hub</em></h3>
+        </div>
+      </div>
+      <div class="card-mk7-body d-flex flex-column gap-2">
+        <!-- Shortcut: Orders -->
+        <a href="{{ url_for('admin_bp.orders') }}" class="d-flex align-items-center justify-content-between p-3 rounded-3 text-decoration-none" style="background: var(--sand-light); border: 1px solid var(--border); transition: all 0.2s ease;">
+          <div class="d-flex align-items-center gap-3">
+            <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background: #ffffff; color: var(--black); box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
+              <i class="bi bi-bag-check-fill fs-5"></i>
+            </div>
+            <div>
+              <div class="fw-semibold text-dark" style="font-size: 14px;">Customer Orders</div>
+              <div class="text-muted" style="font-size: 12px;">{{ stats.total_orders }} orders · {{ stats.pending_orders }} pending</div>
+            </div>
+          </div>
+          <span class="badge rounded-pill bg-dark text-white px-2 py-1" style="font-size: 11px;">View</span>
+        </a>
+
+        <!-- Shortcut: Add New Order -->
+        <a href="{{ url_for('admin_bp.order_add') }}" class="d-flex align-items-center justify-content-between p-3 rounded-3 text-decoration-none" style="background: var(--sand-light); border: 1px solid var(--border); transition: all 0.2s ease;">
+          <div class="d-flex align-items-center gap-3">
+            <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background: var(--black); color: #ffffff;">
+              <i class="bi bi-cart-plus-fill fs-5"></i>
+            </div>
+            <div>
+              <div class="fw-semibold text-dark" style="font-size: 14px;">Create User's Order</div>
+              <div class="text-muted" style="font-size: 12px;">Manual customer order entry</div>
+            </div>
+          </div>
+          <i class="bi bi-plus-lg text-muted"></i>
+        </a>
+
+        <!-- Shortcut: Product Catalog -->
+        <a href="{{ url_for('admin_bp.products') }}" class="d-flex align-items-center justify-content-between p-3 rounded-3 text-decoration-none" style="background: var(--sand-light); border: 1px solid var(--border); transition: all 0.2s ease;">
+          <div class="d-flex align-items-center gap-3">
+            <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background: #ffffff; color: var(--black); box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
+              <i class="bi bi-tag-fill fs-5"></i>
+            </div>
+            <div>
+              <div class="fw-semibold text-dark" style="font-size: 14px;">Manage Products</div>
+              <div class="text-muted" style="font-size: 12px;">{{ stats.total_products }} products in catalog</div>
+            </div>
+          </div>
+          <i class="bi bi-chevron-right text-muted"></i>
+        </a>
+
+        <!-- Shortcut: Categories -->
+        <a href="{{ url_for('admin_bp.categories') }}" class="d-flex align-items-center justify-content-between p-3 rounded-3 text-decoration-none" style="background: var(--sand-light); border: 1px solid var(--border); transition: all 0.2s ease;">
+          <div class="d-flex align-items-center gap-3">
+            <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background: #ffffff; color: var(--black); box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
+              <i class="bi bi-grid-fill fs-5"></i>
+            </div>
+            <div>
+              <div class="fw-semibold text-dark" style="font-size: 14px;">Product Categories</div>
+              <div class="text-muted" style="font-size: 12px;">{{ stats.total_categories }} categories registered</div>
+            </div>
+          </div>
+          <i class="bi bi-chevron-right text-muted"></i>
+        </a>
+
+        <!-- Shortcut: Security Logs -->
+        <a href="{{ url_for('admin_bp.activity_logs') }}" class="d-flex align-items-center justify-content-between p-3 rounded-3 text-decoration-none" style="background: var(--sand-light); border: 1px solid var(--border); transition: all 0.2s ease;">
+          <div class="d-flex align-items-center gap-3">
+            <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background: #ffffff; color: var(--black); box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
+              <i class="bi bi-shield-lock-fill fs-5"></i>
+            </div>
+            <div>
+              <div class="fw-semibold text-dark" style="font-size: 14px;">Security Audit Logs</div>
+              <div class="text-muted" style="font-size: 12px;">Rate limits & server telemetry</div>
+            </div>
+          </div>
+          <i class="bi bi-chevron-right text-muted"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+<!--end::Main Charts & Quick Panels-->
+
+<!--begin::Recent Orders & Catalog Breakdown-->
+<div class="row g-4 mt-1">
+  <!-- Recent Customer Orders Table -->
+  <div class="col-lg-8">
+    <div class="card-mk7">
+      <div class="card-mk7-header">
+        <div>
+          <span class="kicker-tag">Live Activity</span>
+          <h3 class="card-mk7-title">Recent <em>Customer Orders</em></h3>
+        </div>
+        <div>
+          <a href="{{ url_for('admin_bp.orders') }}" class="btn-pill-light" style="padding: 6px 16px; font-size: 12px;">
+            View All Orders &rarr;
+          </a>
+        </div>
+      </div>
+      <div class="card-mk7-body p-0">
+        <div class="table-responsive">
+          <table class="table-mk7 w-100">
+            <thead>
+              <tr>
+                <th>Order #</th>
+                <th>Customer</th>
+                <th>Items</th>
+                <th>Total</th>
+                <th>Status</th>
+                <th>Placed</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for o in recent_orders %}
+              <tr>
+                <td>
+                  <a href="{{ url_for('admin_bp.orders') }}" class="fw-semibold text-dark text-decoration-none font-monospace small">
+                    {{ o.order_number }}
+                  </a>
+                </td>
+                <td>
+                  <div class="fw-semibold text-dark" style="font-size: 13px;">{{ o.customer_name }}</div>
+                  <div class="text-muted" style="font-size: 11px;">{{ o.customer_email }}</div>
+                </td>
+                <td>
+                  <span class="badge rounded-pill bg-light text-dark border font-monospace px-2">
+                    {{ o.items|length }} {% if o.items|length == 1 %}item{% else %}items{% endif %}
+                  </span>
+                </td>
+                <td>
+                  <span class="fw-semibold text-dark">{{ o.total|khr_format }}</span>
+                  <div class="text-muted small" style="font-size: 11px;">{{ o.total|usd_format }}</div>
+                </td>
+                <td>
+                  <span class="status-badge-{{ o.status }}" style="font-size: 11px; padding: 4px 10px; border-radius: 999px; text-transform: capitalize; font-weight: 500;">
+                    {{ o.status }}
+                  </span>
+                </td>
+                <td>
+                  <span class="text-muted small">
+                    {{ o.created_at.strftime("%b %d, %H:%M") if o.created_at else "—" }}
+                  </span>
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="6" class="text-center py-4 text-muted">
+                  No orders placed yet.
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Category Breakdown & Inventory Watch -->
+  <div class="col-lg-4">
+    <div class="card-mk7 h-100">
+      <div class="card-mk7-header">
+        <div>
+          <span class="kicker-tag">Inventory Watch</span>
+          <h3 class="card-mk7-title">Category <em>Distribution</em></h3>
+        </div>
+      </div>
+      <div class="card-mk7-body">
+        {% for cat in category_stats %}
+        <div class="mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="fw-semibold text-dark" style="font-size: 13px;">{{ cat.name }}</span>
+            <span class="text-muted small font-monospace">{{ cat.count }} items ({{ cat.percentage }}%)</span>
+          </div>
+          <div class="progress" style="height: 6px; background: rgba(0,0,0,0.05); border-radius: 999px;">
+            <div class="progress-bar bg-dark cat-prog-bar" role="progressbar" data-width="{{ cat.percentage }}" style="border-radius: 999px;" aria-valuenow="{{ cat.percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+          </div>
+        </div>
+        {% endfor %}
+
+        <div class="mt-4 pt-3 border-top">
+          <span class="kicker-tag">Stock Watch</span>
+          <h4 class="card-mk7-title mb-3" style="font-size: 15px;">Inventory <em>Status</em></h4>
+
+          {% if low_stock_products %}
+          <div class="d-flex flex-column gap-2">
+            {% for p in low_stock_products %}
+            <div class="d-flex align-items-center justify-content-between p-2 rounded-2" style="background: rgba(220, 53, 69, 0.05); border: 1px solid rgba(220, 53, 69, 0.15);">
+              <div class="d-flex align-items-center gap-2">
+                <img src="{{ p.image }}" alt="{{ p.title }}" class="rounded-1" style="width: 28px; height: 28px; object-fit: cover;">
+                <span class="text-dark small text-truncate" style="max-width: 140px;">{{ p.title }}</span>
+              </div>
+              <span class="badge bg-danger rounded-pill px-2 py-1 font-monospace" style="font-size: 10px;">
+                {{ p.stock }} left
+              </span>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="text-center py-3 text-muted small">
+            <i class="bi bi-shield-check text-success fs-5 d-block mb-1"></i>
+            All inventory levels healthy (&ge; 15 units)
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!--end::Recent Orders & Catalog Breakdown-->
+{% endblock %}
+
+{% block scripts %}
+<script id="dashboard-chart-data" type="application/json">{{ stats|tojson }}</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  // Set category progress bar widths
+  document.querySelectorAll('.cat-prog-bar').forEach(function (bar) {
+    bar.style.width = (bar.getAttribute('data-width') || '0') + '%';
+  });
+
+  const chartEl = document.querySelector('#revenue-chart');
+  if (!chartEl) return;
+
+  const dataScript = document.getElementById('dashboard-chart-data');
+  const statsData = dataScript ? JSON.parse(dataScript.textContent) : {};
+  const chartDates = statsData.chart_dates || [];
+  const chartRevenue = statsData.chart_revenue || [];
+  const chartOrders = statsData.chart_orders || [];
+
+  const chartOptions = {
+    series: [
+      {
+        name: 'Revenue ($)',
+        type: 'area',
+        data: chartRevenue,
+      },
+      {
+        name: 'Orders Placed',
+        type: 'column',
+        data: chartOrders,
+      },
+    ],
+    chart: {
+      height: 320,
+      type: 'line',
+      fontFamily: 'DM Sans, sans-serif',
+      toolbar: {
+        show: false,
+      },
+    },
+    colors: ['#0a0a0a', '#b89d72'],
+    stroke: {
+      width: [2.5, 0],
+      curve: 'smooth',
+    },
+    fill: {
+      type: ['gradient', 'solid'],
+      gradient: {
+        shadeIntensity: 1,
+        opacityFrom: 0.35,
+        opacityTo: 0.05,
+        stops: [0, 90, 100],
+      },
+      opacity: [0.35, 0.85],
+    },
+    dataLabels: {
+      enabled: false,
+    },
+    labels: chartDates,
+    xaxis: {
+      categories: chartDates,
+      labels: {
+        style: {
+          colors: '#8a8a8a',
+        },
+      },
+    },
+    yaxis: [
+      {
+        title: {
+          text: 'Revenue ($)',
+          style: { color: '#0a0a0a', fontWeight: 500, fontSize: '11px' },
+        },
+        labels: {
+          formatter: function (val) {
+            return '$' + val.toFixed(0);
+          },
+          style: {
+            colors: '#8a8a8a',
+          },
+        },
+      },
+      {
+        opposite: true,
+        title: {
+          text: 'Orders',
+          style: { color: '#b89d72', fontWeight: 500, fontSize: '11px' },
+        },
+        labels: {
+          formatter: function (val) {
+            return val.toFixed(0);
+          },
+          style: {
+            colors: '#8a8a8a',
+          },
+        },
+      },
+    ],
+    grid: {
+      borderColor: 'rgba(0,0,0,0.06)',
+      strokeDashArray: 4,
+    },
+    legend: {
+      position: 'top',
+      horizontalAlign: 'right',
+      labels: {
+        colors: '#0a0a0a',
+      },
+    },
+    tooltip: {
+      theme: 'light',
+      shared: true,
+      intersect: false,
+      y: {
+        formatter: function (y, { seriesIndex }) {
+          if (typeof y !== 'undefined') {
+            return seriesIndex === 0 ? '$' + y.toFixed(2) : y + ' orders';
+          }
+          return y;
+        },
+      },
+    },
+  };
+
+  const chart = new ApexCharts(chartEl, chartOptions);
+  chart.render();
+});
+</script>
+{% endblock %}

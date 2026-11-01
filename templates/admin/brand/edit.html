@@ -1,0 +1,172 @@
+{% extends 'admin/master.html' %}
+
+{% block page_header %}
+<div class="row align-items-center">
+  <div class="col-sm-6">
+    <span class="kicker-tag">Maison & Houses</span>
+    <h2 class="page-main-heading">Edit <em>Brand</em> #{{ brand.id }}</h2>
+  </div>
+  <div class="col-sm-6">
+    <ul class="breadcrumb-mk7 justify-content-sm-end mt-2 mt-sm-0">
+      <li><a href="{{ url_for('admin_bp.dashboard') }}">Admin</a></li>
+      <li class="breadcrumb-separator"><i class="bi bi-chevron-right"></i></li>
+      <li><a href="{{ url_for('admin_bp.brands') }}">Brands</a></li>
+      <li class="breadcrumb-separator"><i class="bi bi-chevron-right"></i></li>
+      <li class="text-dark fw-semibold">Edit</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8 col-md-10">
+    <div class="card-mk7">
+      <div class="card-mk7-header">
+        <div>
+          <span class="kicker-tag">Maison Profile</span>
+          <h3 class="card-mk7-title">Update <em>{{ brand.name }}</em></h3>
+        </div>
+        <span class="badge-mk7 badge-role-admin">
+          {{ brand.products|length }} Linked Products
+        </span>
+      </div>
+
+      <div class="card-mk7-body">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category_msg, message in messages %}
+              <div class="alert alert-{{ 'danger' if category_msg == 'error' else category_msg }} alert-dismissible fade show mb-4" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <form id="editBrandForm" method="POST" action="{{ url_for('admin_bp.brand_edit', brand_id=brand.id) }}" enctype="multipart/form-data">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          <!-- Logo Picker -->
+          <div class="avatar-picker-container mb-4">
+            <div class="mb-2">
+              {% if brand.logo %}
+              <img id="imagePreview" src="{{ brand.logo }}" alt="Logo Preview"
+                class="avatar-picker-preview mx-auto p-2 bg-white" style="border-radius: var(--radius-sm); object-fit: contain; border: 1px solid var(--border);" title="Click to replace logo">
+              <div id="noImgPreview" class="avatar-picker-placeholder d-none mx-auto" style="border-radius: var(--radius-sm);" title="Click to upload brand logo">
+                <i class="bi bi-award fs-3"></i>
+                <span style="font-size: 11px; font-weight: 500;">Upload Brand Logo</span>
+              </div>
+              {% else %}
+              <div id="noImgPreview" class="avatar-picker-placeholder mx-auto" style="border-radius: var(--radius-sm);" title="Click to upload brand logo">
+                <i class="bi bi-award fs-3"></i>
+                <span style="font-size: 11px; font-weight: 500;">Upload Brand Logo</span>
+              </div>
+              <img id="imagePreview" src="" alt="Logo Preview"
+                class="avatar-picker-preview d-none mx-auto p-2 bg-white" style="border-radius: var(--radius-sm); object-fit: contain; border: 1px solid var(--border);" title="Click to change logo">
+              {% endif %}
+            </div>
+            <input type="file" id="logoInput" name="logo" class="d-none" accept="image/*">
+            <button type="button" class="btn-pill-outline" id="chooseLogoBtn" style="padding: 5px 16px; font-size: 12px;">
+              <i class="bi bi-image"></i> Change Logo
+            </button>
+            <div class="text-muted small mt-2" style="font-size: 11.5px;">PNG, SVG, JPG, or WEBP up to 2MB (Leave empty to keep existing logo)</div>
+          </div>
+
+          <hr class="my-4" style="border-color: var(--border);">
+
+          <!-- Name -->
+          <div class="mb-4">
+            <label for="brandName" class="form-label fw-bold small text-uppercase" style="letter-spacing: 0.08em; color: var(--muted);">
+              Brand Name *
+            </label>
+            <div class="input-group">
+              <span class="input-group-text bg-transparent border-end-0" style="border-color: var(--border); border-radius: var(--radius-sm) 0 0 var(--radius-sm);">
+                <i class="bi bi-award text-muted"></i>
+              </span>
+              <input type="text" class="form-control form-control-mk7 border-start-0" id="brandName" name="name"
+                value="{{ brand.name }}" required style="border-radius: 0 var(--radius-sm) var(--radius-sm) 0 !important;">
+            </div>
+          </div>
+
+          <!-- Slug -->
+          <div class="mb-4">
+            <label for="brandSlug" class="form-label fw-bold small text-uppercase" style="letter-spacing: 0.08em; color: var(--muted);">
+              Slug (URL Identifier)
+            </label>
+            <div class="input-group">
+              <span class="input-group-text bg-transparent border-end-0" style="border-color: var(--border); border-radius: var(--radius-sm) 0 0 var(--radius-sm);">
+                <i class="bi bi-link-45deg text-muted"></i>
+              </span>
+              <input type="text" class="form-control form-control-mk7 border-start-0" id="brandSlug" name="slug"
+                value="{{ brand.slug }}" style="border-radius: 0 var(--radius-sm) var(--radius-sm) 0 !important;">
+            </div>
+          </div>
+
+          <!-- Website -->
+          <div class="mb-4">
+            <label for="brandWebsite" class="form-label fw-bold small text-uppercase" style="letter-spacing: 0.08em; color: var(--muted);">
+              Official Website
+            </label>
+            <div class="input-group">
+              <span class="input-group-text bg-transparent border-end-0" style="border-color: var(--border); border-radius: var(--radius-sm) 0 0 var(--radius-sm);">
+                <i class="bi bi-globe text-muted"></i>
+              </span>
+              <input type="url" class="form-control form-control-mk7 border-start-0" id="brandWebsite" name="website"
+                value="{{ brand.website or '' }}" placeholder="https://example.com" style="border-radius: 0 var(--radius-sm) var(--radius-sm) 0 !important;">
+            </div>
+          </div>
+
+          <!-- Description -->
+          <div class="mb-4">
+            <label for="brandDescription" class="form-label fw-bold small text-uppercase" style="letter-spacing: 0.08em; color: var(--muted);">
+              Brand Story / Description
+            </label>
+            <textarea class="form-control form-control-mk7" id="brandDescription" name="description" rows="3"
+              style="border-radius: var(--radius-sm);">{{ brand.description or '' }}</textarea>
+          </div>
+
+          <hr class="my-4" style="border-color: var(--border);">
+
+          <!-- Form Buttons -->
+          <div class="d-flex align-items-center justify-content-between">
+            <a href="{{ url_for('admin_bp.brands') }}" class="btn-pill-outline">
+              <i class="bi bi-arrow-left"></i> Back to Brands
+            </a>
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn-pill-primary">
+                <i class="bi bi-check2"></i> Save Changes
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const logoInput = document.getElementById('logoInput');
+    const imagePreview = document.getElementById('imagePreview');
+    const chooseLogoBtn = document.getElementById('chooseLogoBtn');
+    const noImgPreview = document.getElementById('noImgPreview');
+
+    chooseLogoBtn.addEventListener('click', function () { logoInput.click(); });
+    if (imagePreview) imagePreview.addEventListener('click', function () { logoInput.click(); });
+    if (noImgPreview) noImgPreview.addEventListener('click', function () { logoInput.click(); });
+
+    logoInput.addEventListener('change', function (event) {
+      const file = event.target.files[0];
+      if (file) {
+        imagePreview.src = URL.createObjectURL(file);
+        imagePreview.classList.remove('d-none');
+        if (noImgPreview) noImgPreview.classList.add('d-none');
+        imagePreview.onload = function () {
+          URL.revokeObjectURL(imagePreview.src);
+        };
+      }
+    });
+  });
+</script>
+{% endblock %}

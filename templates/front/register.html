@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <title>{{ title|default('Create Account') }} | MK7</title>
+
+  <!-- Accessibility Meta Tags -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="color-scheme" content="light dark" />
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" crossorigin="anonymous" />
+
+  <!-- Storefront Components Stylesheet -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}" />
+
+  <!-- Custom Auth Stylesheet (Matches Storefront Aesthetic) -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='admin/css/login.css') }}" />
+</head>
+
+<body class="login-page">
+  <!-- App Wrapper -->
+  <div class="app-wrapper d-flex flex-column min-vh-100 justify-content-between position-relative" style="z-index: 1;">
+    <!-- Center Content -->
+    <div class="d-flex align-items-center justify-content-center flex-grow-1 p-3 py-5">
+      <div class="login-box">
+        <!-- Logo -->
+        <div class="login-logo">
+          <span class="login-kicker">{{ kicker|default('Customer Registration') }}</span>
+          <a href="{{ url_for('front_bp.home') }}">
+            <span class="brand-icon">
+              <i class="bi bi-person-plus"></i>
+            </span>
+            <span>MK7 <em>{{ portal_name|default('Account') }}</em></span>
+          </a>
+        </div>
+
+        <!-- Card -->
+        <div class="login-card">
+          <h2 class="login-title">Create <em>Account</em></h2>
+          <p class="login-subtitle">
+            {{ subtitle|default('Join MK7 for exclusive collections, effortless bag checkout, and order tracking') }}
+          </p>
+
+          <!-- Flash Messages -->
+          {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+          {% for category, message in messages %}
+          <div
+            class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show small rounded-3 mb-4"
+            role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+          {% endfor %}
+          {% endif %}
+          {% endwith %}
+
+          <form action="" method="POST" id="registerForm">
+            <!-- CSRF token -->
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="next" value="{{ next|default(request.args.get('next', '')) }}">
+
+            <!-- Full Name / Username -->
+            <div class="input-group mb-3">
+              <div class="form-floating flex-grow-1">
+                <input type="text" class="form-control" id="regUsername" name="username"
+                  placeholder="Username" required autocomplete="username" />
+                <label for="regUsername">Username</label>
+              </div>
+              <span class="input-group-addon">
+                <i class="bi bi-person"></i>
+              </span>
+            </div>
+
+            <!-- Email -->
+            <div class="input-group mb-3">
+              <div class="form-floating flex-grow-1">
+                <input type="email" class="form-control" id="regEmail" name="email"
+                  placeholder="Email Address" required autocomplete="email" />
+                <label for="regEmail">Email Address</label>
+              </div>
+              <span class="input-group-addon">
+                <i class="bi bi-envelope"></i>
+              </span>
+            </div>
+
+            <!-- Password -->
+            <div class="input-group mb-3">
+              <div class="form-floating flex-grow-1">
+                <input type="password" class="form-control" id="regPassword" name="password"
+                  placeholder="Password (min 4 characters)" required autocomplete="new-password" minlength="4" />
+                <label for="regPassword">Password</label>
+              </div>
+              <span class="input-group-addon">
+                <button type="button" class="btn-toggle-password" id="togglePasswordBtn"
+                  title="Toggle password visibility">
+                  <i class="bi bi-eye" id="togglePasswordIcon"></i>
+                </button>
+              </span>
+            </div>
+
+            <!-- Confirm Password -->
+            <div class="input-group mb-4">
+              <div class="form-floating flex-grow-1">
+                <input type="password" class="form-control" id="regConfirmPassword" name="confirm_password"
+                  placeholder="Confirm Password" required autocomplete="new-password" minlength="4" />
+                <label for="regConfirmPassword">Confirm Password</label>
+              </div>
+              <span class="input-group-addon">
+                <i class="bi bi-shield-check"></i>
+              </span>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" class="btn-login">
+              <span>{{ btn_text|default('Create Account') }}</span>
+              <i class="bi bi-arrow-right"></i>
+            </button>
+          </form>
+
+          <!-- Sign In Link -->
+          <div class="text-center mt-3 pt-3 border-top" style="font-size: 13.5px; color: var(--muted);">
+            Already have an account?
+            <a href="{{ url_for('front_bp.user_login', next=next|default(request.args.get('next', ''))) }}" style="color: var(--black); font-weight: 600; text-decoration: none;">
+              Sign In <i class="bi bi-arrow-right-short"></i>
+            </a>
+          </div>
+
+          <!-- Bottom Footer Links -->
+          <div class="login-footer-links d-flex align-items-center justify-content-between mt-3">
+            <a href="{{ url_for('front_bp.home') }}">
+              <i class="bi bi-arrow-left"></i> Back to Store
+            </a>
+            <a href="{{ url_for('admin_bp.admin_login') }}">
+              Admin Portal <i class="bi bi-shield-lock"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toggle password script -->
+  <script>
+    (function () {
+      const toggleBtn = document.getElementById('togglePasswordBtn');
+      const passwordInput = document.getElementById('regPassword');
+      const icon = document.getElementById('togglePasswordIcon');
+
+      if (toggleBtn && passwordInput && icon) {
+        toggleBtn.addEventListener('click', function () {
+          const isPassword = passwordInput.getAttribute('type') === 'password';
+          passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+          icon.className = isPassword ? 'bi bi-eye-slash' : 'bi bi-eye';
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,176 @@
+{% extends 'admin/master.html' %}
+
+{% block page_header %}
+<div class="row align-items-center">
+  <div class="col-sm-6">
+    <span class="kicker-tag">Taxonomy Registry</span>
+    <h2 class="page-main-heading">Add New <em>Category</em></h2>
+  </div>
+  <div class="col-sm-6">
+    <ul class="breadcrumb-mk7 justify-content-sm-end mt-2 mt-sm-0">
+      <li><a href="{{ url_for('admin_bp.dashboard') }}">Admin</a></li>
+      <li class="breadcrumb-separator"><i class="bi bi-chevron-right"></i></li>
+      <li><a href="{{ url_for('admin_bp.categories') }}">Categories</a></li>
+      <li class="breadcrumb-separator"><i class="bi bi-chevron-right"></i></li>
+      <li class="text-dark fw-semibold">Add</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8 col-md-10">
+    <div class="card-mk7">
+      <div class="card-mk7-header">
+        <div>
+          <span class="kicker-tag">Category Specifications</span>
+          <h3 class="card-mk7-title">Taxonomy <em>Information</em></h3>
+        </div>
+      </div>
+
+      <div class="card-mk7-body">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category_msg, message in messages %}
+              <div class="alert alert-{{ 'danger' if category_msg == 'error' else category_msg }} alert-dismissible fade show mb-4" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <form id="addCategoryForm" method="POST" action="{{ url_for('admin_bp.category_add') }}" enctype="multipart/form-data">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          <!-- Image Picker -->
+          <div class="avatar-picker-container mb-4">
+            <div class="mb-2">
+              <div id="noImgPreview" class="avatar-picker-placeholder mx-auto" style="border-radius: var(--radius-sm);" title="Click to choose thumbnail">
+                <i class="bi bi-card-image fs-3"></i>
+                <span style="font-size: 11px; font-weight: 500;">Upload Category Cover</span>
+              </div>
+              <img id="imagePreview" src="" alt="Preview"
+                class="avatar-picker-preview d-none mx-auto" style="border-radius: var(--radius-sm); object-fit: cover;" title="Click to change image">
+            </div>
+            <input type="file" id="imageInput" name="image" class="d-none" accept="image/*">
+            <button type="button" class="btn-pill-outline" id="chooseImageBtn" style="padding: 5px 16px; font-size: 12px;">
+              <i class="bi bi-image"></i> Select Image
+            </button>
+            <div class="text-muted small mt-2" style="font-size: 11.5px;">PNG, JPG, or WEBP up to 2MB (Optional)</div>
+          </div>
+
+          <hr class="my-4" style="border-color: var(--border);">
+
+          <!-- Name -->
+          <div class="mb-4">
+            <label for="catName" class="form-label fw-bold small text-uppercase" style="letter-spacing: 0.08em; color: var(--muted);">
+              Category Name *
+            </label>
+            <div class="input-group">
+              <span class="input-group-text bg-transparent border-end-0" style="border-color: var(--border); border-radius: var(--radius-sm) 0 0 var(--radius-sm);">
+                <i class="bi bi-tag text-muted"></i>
+              </span>
+              <input type="text" class="form-control form-control-mk7 border-start-0" id="catName" name="name"
+                placeholder="e.g. Knitwear, Suits & Blazers, Outerwear" required style="border-radius: 0 var(--radius-sm) var(--radius-sm) 0 !important;">
+            </div>
+          </div>
+
+          <!-- Slug -->
+          <div class="mb-4">
+            <label for="catSlug" class="form-label fw-bold small text-uppercase" style="letter-spacing: 0.08em; color: var(--muted);">
+              Slug (URL Identifier)
+            </label>
+            <div class="input-group">
+              <span class="input-group-text bg-transparent border-end-0" style="border-color: var(--border); border-radius: var(--radius-sm) 0 0 var(--radius-sm);">
+                <i class="bi bi-link-45deg text-muted"></i>
+              </span>
+              <input type="text" class="form-control form-control-mk7 border-start-0" id="catSlug" name="slug"
+                placeholder="e.g. knitwear (auto-generated if empty)" style="border-radius: 0 var(--radius-sm) var(--radius-sm) 0 !important;">
+            </div>
+            <div class="text-muted small mt-1" style="font-size: 11.5px;">Leave empty to automatically generate from category name.</div>
+          </div>
+
+          <!-- Description -->
+          <div class="mb-4">
+            <label for="catDescription" class="form-label fw-bold small text-uppercase" style="letter-spacing: 0.08em; color: var(--muted);">
+              Description
+            </label>
+            <textarea class="form-control form-control-mk7" id="catDescription" name="description" rows="3"
+              placeholder="Provide a concise editorial description of the category..." style="border-radius: var(--radius-sm);"></textarea>
+          </div>
+
+          <hr class="my-4" style="border-color: var(--border);">
+
+          <!-- Form Buttons -->
+          <div class="d-flex align-items-center justify-content-between">
+            <a href="{{ url_for('admin_bp.categories') }}" class="btn-pill-outline">
+              <i class="bi bi-arrow-left"></i> Back to Categories
+            </a>
+            <div class="d-flex gap-2">
+              <button type="reset" class="btn-pill-outline">
+                <i class="bi bi-arrow-counterclockwise"></i> Reset
+              </button>
+              <button type="submit" class="btn-pill-primary">
+                <i class="bi bi-check2"></i> Create Category
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const imageInput = document.getElementById('imageInput');
+    const imagePreview = document.getElementById('imagePreview');
+    const chooseImageBtn = document.getElementById('chooseImageBtn');
+    const noImgPreview = document.getElementById('noImgPreview');
+    const catNameInput = document.getElementById('catName');
+    const catSlugInput = document.getElementById('catSlug');
+
+    // Auto-fill slug from name if slug hasn't been manually edited
+    let slugManual = false;
+    catSlugInput.addEventListener('input', function() {
+      slugManual = catSlugInput.value.length > 0;
+    });
+    catNameInput.addEventListener('input', function() {
+      if (!slugManual) {
+        catSlugInput.value = catNameInput.value
+          .toLowerCase()
+          .trim()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '');
+      }
+    });
+
+    chooseImageBtn.addEventListener('click', function () { imageInput.click(); });
+    imagePreview.addEventListener('click', function () { imageInput.click(); });
+    if (noImgPreview) noImgPreview.addEventListener('click', function () { imageInput.click(); });
+
+    imageInput.addEventListener('change', function (event) {
+      const file = event.target.files[0];
+      if (file) {
+        imagePreview.src = URL.createObjectURL(file);
+        imagePreview.classList.remove('d-none');
+        if (noImgPreview) noImgPreview.classList.add('d-none');
+        imagePreview.onload = function () {
+          URL.revokeObjectURL(imagePreview.src);
+        };
+      }
+    });
+
+    document.getElementById('addCategoryForm').addEventListener('reset', function () {
+      slugManual = false;
+      setTimeout(function () {
+        imagePreview.src = '';
+        imagePreview.classList.add('d-none');
+        if (noImgPreview) noImgPreview.classList.remove('d-none');
+      }, 0);
+    });
+  });
+</script>
+{% endblock %}

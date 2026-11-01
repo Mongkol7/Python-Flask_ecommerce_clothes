@@ -1,0 +1,104 @@
+      <!--begin::Header-->
+      <nav class="app-header navbar navbar-expand">
+        <!--begin::Container-->
+        <div class="container-fluid d-flex align-items-center justify-content-between px-3">
+          <!--begin::Start Navbar Links-->
+          <div class="d-flex align-items-center gap-2">
+            <a class="nav-link p-2" data-lte-toggle="sidebar" href="#" role="button" title="Toggle Navigation">
+              <i class="bi bi-list fs-5"></i>
+            </a>
+          </div>
+          <!--end::Start Navbar Links-->
+
+          <!--begin::End Navbar Links-->
+          <ul class="navbar-nav align-items-center gap-2">
+            <!--begin::Fullscreen Toggle-->
+            <li class="nav-item d-none d-sm-block">
+              <a class="nav-link p-2" href="#" data-lte-toggle="fullscreen" title="Toggle Fullscreen">
+                <i data-lte-icon="maximize" class="bi bi-arrows-fullscreen"></i>
+                <i data-lte-icon="minimize" class="bi bi-fullscreen-exit d-none"></i>
+              </a>
+            </li>
+            <!--end::Fullscreen Toggle-->
+
+            <!--begin::User Menu Dropdown-->
+            {% set admin_img = current_admin.profile if (current_admin and current_admin.profile) else session.get('profile') %}
+            {% set admin_id = current_admin.id if (current_admin and current_admin.id) else session.get('user_id') %}
+            {% set admin_name = (current_admin.username if current_admin else session.get('username')) or 'Admin' %}
+            {% set admin_role = (current_admin.role if current_admin else session.get('role')) or 'user' %}
+            
+            <li class="nav-item dropdown user-menu">
+              <a href="#" class="nav-link dropdown-toggle d-flex align-items-center gap-2 py-1 px-2" data-bs-toggle="dropdown">
+                {% if admin_img %}
+                <img
+                  src="{{ admin_img | profile_url(admin_id, 'thum') }}"
+                  class="user-image rounded-circle shadow-sm"
+                  alt="User Avatar"
+                  style="width: 34px; height: 34px; object-fit: cover; border: 1.5px solid rgba(0, 0, 0, 0.1);"
+                />
+                {% else %}
+                <img
+                  src="{{ url_for('static', filename='admin/assets/img/avatar.png') }}"
+                  class="user-image rounded-circle"
+                  alt="User Avatar"
+                  style="width: 34px; height: 34px; object-fit: cover;"
+                />
+                {% endif %}
+                <div class="d-none d-md-flex flex-column text-start" style="line-height: 1.15;">
+                  <span class="fw-semibold text-dark" style="font-size: 13px;">{{ admin_name }}</span>
+                  <span class="text-secondary" style="font-size: 11px;">{{ admin_role|capitalize }}</span>
+                </div>
+                <i class="bi bi-chevron-down text-muted ms-1" style="font-size: 11px;"></i>
+              </a>
+              <ul class="dropdown-menu dropdown-menu-end shadow-lg">
+                <!--begin::User Header-->
+                <li class="user-header">
+                  {% if admin_img %}
+                  <img
+                    src="{{ admin_img | profile_url(admin_id, 'thum') }}"
+                    class="rounded-circle shadow"
+                    alt="User Image"
+                    style="width: 80px; height: 80px; object-fit: cover; border: 2px solid rgba(255, 255, 255, 0.6);"
+                  />
+                  {% else %}
+                  <img
+                    src="{{ url_for('static', filename='admin/assets/img/avatar.png') }}"
+                    class="rounded-circle"
+                    alt="User Image"
+                    style="width: 80px; height: 80px; object-fit: cover;"
+                  />
+                  {% endif %}
+                  <p class="mb-1 text-white fw-bold">{{ admin_name }}</p>
+                  <span class="badge-mk7 badge-role-admin" style="background: rgba(255,255,255,0.2); color: #fff;">
+                    {{ admin_role|upper }}
+                  </span>
+                </li>
+                <!--end::User Header-->
+                <!--begin::Menu Links-->
+                <li class="p-2 border-bottom">
+                  <a href="{{ url_for('admin_bp.dashboard') }}" class="dropdown-item rounded-2 py-2 d-flex align-items-center gap-2">
+                    <i class="bi bi-speedometer2 text-muted"></i>
+                    <span>Dashboard</span>
+                  </a>
+                  <a href="{{ url_for('admin_bp.users') }}" class="dropdown-item rounded-2 py-2 d-flex align-items-center gap-2">
+                    <i class="bi bi-people text-muted"></i>
+                    <span>User Management</span>
+                  </a>
+                </li>
+                <!--end::Menu Links-->
+                <!--begin::Menu Footer-->
+                <li class="user-footer d-flex justify-content-end">
+                  <a href="{{ url_for('admin_bp.admin_logout') }}" class="btn-pill-danger w-100 text-center justify-content-center" style="padding: 6px 14px; font-size: 12.5px;">
+                    <i class="bi bi-box-arrow-right"></i> Sign out
+                  </a>
+                </li>
+                <!--end::Menu Footer-->
+              </ul>
+            </li>
+            <!--end::User Menu Dropdown-->
+          </ul>
+          <!--end::End Navbar Links-->
+        </div>
+        <!--end::Container-->
+      </nav>
+      <!--end::Header-->

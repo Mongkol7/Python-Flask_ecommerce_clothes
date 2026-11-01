@@ -1,0 +1,304 @@
+{% extends 'admin/master.html' %}
+
+{% block page_header %}
+<div class="row align-items-center">
+  <div class="col-sm-6">
+    <span class="kicker-tag">Luxury Merchandise</span>
+    <h2 class="page-main-heading">Product <em>Catalog</em></h2>
+  </div>
+  <div class="col-sm-6">
+    <ul class="breadcrumb-mk7 justify-content-sm-end mt-2 mt-sm-0">
+      <li><a href="{{ url_for('admin_bp.dashboard') }}">Admin</a></li>
+      <li class="breadcrumb-separator"><i class="bi bi-chevron-right"></i></li>
+      <li class="text-dark fw-semibold">Products</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Search & Filters Toolbar -->
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="card-mk7 p-3">
+      <form method="GET" action="{{ url_for('admin_bp.products') }}" class="row g-2 align-items-center">
+        <!-- Search Keyword -->
+        <div class="col-lg-4 col-md-12">
+          <div class="input-group">
+            <span class="input-group-text bg-transparent border-end-0" style="border-color: var(--border);">
+              <i class="bi bi-search text-muted"></i>
+            </span>
+            <input type="text" name="search" class="form-control form-control-mk7 border-start-0"
+              placeholder="Search product title or description..." value="{{ search_query }}">
+          </div>
+        </div>
+
+        <!-- Filter Category -->
+        <div class="col-lg-2 col-md-4 col-sm-6">
+          <select name="category" class="form-select form-select-mk7">
+            <option value="">All Categories</option>
+            {% for cat in categories %}
+            <option value="{{ cat.id }}" {{ 'selected' if selected_category == cat.id|string else '' }}>{{ cat.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Filter Brand -->
+        <div class="col-lg-2 col-md-4 col-sm-6">
+          <select name="brand" class="form-select form-select-mk7">
+            <option value="">All Brands</option>
+            {% for b in brands %}
+            <option value="{{ b.id }}" {{ 'selected' if selected_brand == b.id|string else '' }}>{{ b.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Filter Gender -->
+        <div class="col-lg-2 col-md-4 col-sm-6">
+          <select name="gender" class="form-select form-select-mk7">
+            <option value="">All Genders</option>
+            <option value="woman" {{ 'selected' if selected_gender == 'woman' else '' }}>Women</option>
+            <option value="man" {{ 'selected' if selected_gender == 'man' else '' }}>Men</option>
+            <option value="unisex" {{ 'selected' if selected_gender == 'unisex' else '' }}>Unisex</option>
+          </select>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="col-lg-2 col-md-12 d-flex gap-2">
+          <button type="submit" class="btn-pill-primary w-100 justify-content-center">
+            <i class="bi bi-funnel"></i> Filter
+          </button>
+          {% if search_query or selected_category or selected_brand or selected_gender %}
+          <a href="{{ url_for('admin_bp.products') }}" class="btn-pill-outline text-nowrap" title="Reset all filters">
+            <i class="bi bi-x-circle"></i>
+          </a>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="card-mk7">
+      <div class="card-mk7-header">
+        <div class="d-flex align-items-center gap-3">
+          <h3 class="card-mk7-title">Editorial <em>Collection</em></h3>
+          <span class="badge-mk7 badge-role-user">{{ products|length }} Items</span>
+        </div>
+        <div>
+          <a href="{{ url_for('admin_bp.product_add') }}" class="btn-pill-primary">
+            <i class="bi bi-plus-lg"></i>
+            <span>Add Product</span>
+          </a>
+        </div>
+      </div>
+      <!-- /.card-header -->
+
+      <div class="table-responsive">
+        <table id="products-table" class="table table-hover table-editorial align-middle mb-0">
+          <thead>
+            <tr>
+              <th style="width: 60px;">ID</th>
+              <th style="width: 75px;">Image</th>
+              <th>Product Details</th>
+              <th style="width: 100px;">Price</th>
+              <th style="width: 130px;">Category</th>
+              <th style="width: 120px;">Brand</th>
+              <th style="width: 90px;">Stock</th>
+              <th style="width: 100px;">Rating</th>
+              <th style="width: 160px;" class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for prod in products %}
+            <tr>
+              <td><span class="fw-bold text-dark">#{{ prod.id }}</span></td>
+              <td>
+                <img src="{{ prod.image }}" alt="{{ prod.title }}"
+                     class="table-avatar-img"
+                     style="border-radius: var(--radius-sm); width: 48px; height: 58px; object-fit: cover; border: 1px solid var(--border);">
+              </td>
+              <td>
+                <div class="d-flex flex-column">
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="fw-bold text-dark" style="font-size: 14px;">{{ prod.title }}</span>
+                    {% if prod.is_featured %}
+                    <span class="badge bg-warning text-dark" style="font-size: 10px; padding: 2px 6px; border-radius: 10px;">
+                      <i class="bi bi-star-fill"></i> Featured
+                    </span>
+                    {% endif %}
+                  </div>
+                  <div class="d-flex align-items-center gap-2 mt-1">
+                    <span class="badge" style="background: rgba(0,0,0,0.04); color: var(--muted); font-size: 11px;">
+                      {{ prod.gender|capitalize }}
+                    </span>
+                    <span class="text-secondary small text-truncate" style="max-width: 280px;">
+                      {{ prod.description or 'No description' }}
+                    </span>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="fw-bold" style="font-size: 14.5px; color: var(--primary);">
+                  {{ prod.price|khr_format }}
+                </span>
+                <div class="text-muted small" style="font-size: 11px;">{{ prod.price|usd_format }}</div>
+              </td>
+              <td>
+                {% if prod.category %}
+                <span class="badge-mk7 badge-role-user">
+                  {{ prod.category.name }}
+                </span>
+                {% else %}
+                <span class="text-muted small">—</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if prod.brand %}
+                <span class="badge-mk7 badge-role-admin">
+                  {{ prod.brand.name }}
+                </span>
+                {% else %}
+                <span class="text-muted small">—</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if prod.stock > 10 %}
+                <span class="badge-mk7 badge-status-active">
+                  {{ prod.stock }} in stock
+                </span>
+                {% elif prod.stock > 0 %}
+                <span class="badge-mk7" style="background: #fff8e6; color: #b78103; border: 1px solid #ffeeba;">
+                  {{ prod.stock }} left
+                </span>
+                {% else %}
+                <span class="badge-mk7" style="background: #fdf2f2; color: #dc3545; border: 1px solid #f8d7da;">
+                  Out of stock
+                </span>
+                {% endif %}
+              </td>
+              <td>
+                <div class="d-flex align-items-center gap-1 small text-secondary">
+                  <i class="bi bi-star-fill text-warning"></i>
+                  <span class="fw-semibold text-dark">{{ prod.rating_rate or 0 }}</span>
+                  <span class="text-muted" style="font-size: 11px;">({{ prod.rating_count or 0 }})</span>
+                </div>
+              </td>
+              <td class="text-end">
+                <div class="d-inline-flex gap-2">
+                  <a href="{{ url_for('admin_bp.product_edit', product_id=prod.id) }}" class="btn-action-edit" title="Edit product">
+                    <i class="bi bi-pencil-square"></i> Edit
+                  </a>
+                  <button type="button" class="btn-action-delete btn-delete-product"
+                    data-prod-id="{{ prod.id }}"
+                    data-prod-title="{{ prod.title }}"
+                    data-prod-img="{{ prod.image }}"
+                    data-prod-price="{{ prod.price|khr_format }} ({{ prod.price|usd_format }})"
+                    title="Delete product">
+                    <i class="bi bi-trash3"></i> Delete
+                  </button>
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="9" class="text-center py-5 text-muted">
+                <i class="bi bi-box-seam fs-1 d-block mb-2 text-muted"></i>
+                No products found matching the criteria. Click <strong>Add Product</strong> to populate your catalog.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteProductModal" tabindex="-1" aria-labelledby="deleteProductModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content modal-content-mk7">
+      <div class="modal-header modal-header-mk7">
+        <h5 class="modal-title fw-bold" id="deleteProductModalLabel">
+          <i class="bi bi-exclamation-circle text-danger me-2"></i>Confirm Deletion
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body modal-body-mk7 text-center">
+        <div class="mb-3">
+          <img id="deleteProductImg" src="" alt="Product Image" class="rounded shadow-sm" width="84" height="100" style="object-fit: cover;">
+        </div>
+        <h5 class="fw-bold mb-1">Delete product <span id="deleteProductTitle" class="text-dark"></span>?</h5>
+        <div class="text-muted small mb-3">Price: <span id="deleteProductPrice"></span></div>
+        <p class="text-muted small mb-0">This operation will permanently remove this item from both the Admin inventory and customer storefront. This action cannot be undone.</p>
+      </div>
+      <div class="modal-footer modal-footer-mk7 d-flex justify-content-between">
+        <button type="button" class="btn-pill-danger" id="confirmDeleteProdBtn">
+          <i class="bi bi-trash3"></i> Delete Product
+        </button>
+        <button type="button" class="btn-pill-outline" data-bs-dismiss="modal">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Axios CDN -->
+<script src="https://cdn.jsdelivr.net/npm/axios@1.7.9/dist/axios.min.js"></script>
+
+<script>
+  axios.defaults.headers.common['X-CSRFToken'] = '{{ csrf_token() }}';
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteProductModal'));
+    const deleteProdTitleEl = document.getElementById('deleteProductTitle');
+    const deleteProdImgEl = document.getElementById('deleteProductImg');
+    const deleteProdPriceEl = document.getElementById('deleteProductPrice');
+    const confirmDeleteBtn = document.getElementById('confirmDeleteProdBtn');
+    let currentProdId = null;
+
+    document.querySelectorAll('.btn-delete-product').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        currentProdId = this.getAttribute('data-prod-id');
+        const prodTitle = this.getAttribute('data-prod-title');
+        const prodImg = this.getAttribute('data-prod-img');
+        const prodPrice = this.getAttribute('data-prod-price');
+
+        deleteProdTitleEl.textContent = prodTitle;
+        deleteProdImgEl.src = prodImg;
+        deleteProdPriceEl.textContent = prodPrice;
+
+        deleteModal.show();
+      });
+    });
+
+    confirmDeleteBtn.addEventListener('click', function () {
+      if (!currentProdId) return;
+
+      confirmDeleteBtn.disabled = true;
+      confirmDeleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Deleting...';
+
+      axios.post('/admin/products/delete/' + currentProdId)
+        .then(function (response) {
+          const deletedRow = document.querySelector('.btn-delete-product[data-prod-id="' + currentProdId + '"]');
+          if (deletedRow) {
+            deletedRow.closest('tr').remove();
+          }
+          deleteModal.hide();
+        })
+        .catch(function (error) {
+          alert('Failed to delete product: ' + (error.response?.data?.message || 'Please try again.'));
+        })
+        .finally(function () {
+          confirmDeleteBtn.disabled = false;
+          confirmDeleteBtn.innerHTML = '<i class="bi bi-trash3"></i> Delete Product';
+          currentProdId = null;
+        });
+    });
+  });
+</script>
+{% endblock %}

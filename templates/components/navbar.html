@@ -1,33 +1,155 @@
 <nav class="navbar-ios">
+  <input type="hidden" id="global_csrf_token" name="csrf_token" value="{{ csrf_token() }}">
+  <script>window.CSRF_TOKEN = "{{ csrf_token() }}";</script>
   <div class="navbar-inner">
-    <a href="{{ url_for('home') }}" class="nav-logo">MK7</a>
+    <a href="{{ url_for('front_bp.home') }}" class="nav-logo">MK7</a>
 
     <ul class="nav-links">
       <li>
-        <a href="{{ url_for('home') }}" class="{% if request.endpoint == 'home' %}active{% endif %}">Home</a>
+        <a href="{{ url_for('front_bp.home') }}" class="{% if request.endpoint in ['front_bp.home', 'home'] %}active{% endif %}">Home</a>
       </li>
       <li>
-        <a href="{{ url_for('product_list') }}" class="{% if request.endpoint in ['product_list', 'product_detail', 'old_product_detail'] %}active{% endif %}">Products</a>
+        <a href="{{ url_for('front_bp.product_list') }}" class="{% if request.endpoint in ['front_bp.product_list', 'front_bp.product_detail', 'front_bp.old_product_detail', 'product_list', 'product_detail', 'old_product_detail'] %}active{% endif %}">Products</a>
       </li>
     </ul>
 
     <div class="nav-actions">
-      <form class="nav-search" action="{{ url_for('search') }}" method="get">
+      <form class="nav-search" action="{{ url_for('front_bp.search') }}" method="get">
         <input type="search" name="q" value="{{ query|default('') }}" placeholder="Search" aria-label="Search products">
         <button class="btn-icon" type="submit" aria-label="Search">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         </button>
       </form>
-      <a href="{{ url_for('cart') }}" class="btn-icon cart-badge" data-count="{{ cart_count }}" aria-label="Cart">
+      <a href="{{ url_for('front_bp.cart') }}" class="btn-icon cart-badge" data-count="{{ cart_count }}" aria-label="Cart">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
           <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
           <line x1="3" y1="6" x2="21" y2="6"/>
           <path d="M16 10a4 4 0 0 1-8 0"/>
         </svg>
       </a>
-      <a href="#" class="btn-icon" aria-label="Account">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      </a>
+      <!-- Account Profile Dropdown -->
+      {% set user_profile_img = current_user.profile if (current_user and current_user.profile) else session.get('profile') %}
+      {% set user_profile_id = current_user.id if (current_user and current_user.id) else session.get('user_id') %}
+      {% set user_name = (current_user.username if current_user else session.get('username')) or 'Guest' %}
+      {% set user_role = (current_user.role if current_user else session.get('role')) or 'user' %}
+
+      <div class="nav-account-dropdown">
+        <button type="button" class="btn-icon nav-account-btn" id="navAccountBtn" aria-label="Account" aria-expanded="false" title="Account">
+          {% if session.get('is_login') and user_profile_img %}
+          <img src="{{ user_profile_img | profile_url(user_profile_id, 'thum') }}" alt="Profile" class="nav-profile-thumb" />
+          {% else %}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          {% endif %}
+        </button>
+
+        <div class="nav-account-menu" id="navAccountMenu">
+          {% if session.get('is_login') %}
+          <!-- Logged In State -->
+          <div class="nav-account-header">
+            <div class="d-flex align-items-center gap-2 mb-2">
+              {% if user_profile_img %}
+              <img src="{{ user_profile_img | profile_url(user_profile_id, 'thum') }}" alt="Avatar" class="rounded-circle border" style="width: 38px; height: 38px; object-fit: cover;" />
+              {% endif %}
+              <div>
+                <div class="nav-account-greeting">Signed in as</div>
+                <div class="nav-account-user" style="margin-bottom: 0;">{{ user_name }}</div>
+              </div>
+            </div>
+            <span class="nav-account-badge">{{ 'ADMIN' if user_role == 'admin' else 'SHOPPER' }}</span>
+          </div>
+
+          <div class="nav-account-links">
+            {% if user_role == 'admin' %}
+            <!-- Admin Role Links -->
+            <a href="{{ url_for('admin_bp.dashboard') }}" class="nav-account-item">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+              <span>Admin Dashboard</span>
+            </a>
+            <a href="{{ url_for('admin_bp.users') }}" class="nav-account-item">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <span>User Management</span>
+            </a>
+            <a href="{{ url_for('front_bp.user_profile') }}" class="nav-account-item">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <span>Profile Settings</span>
+            </a>
+            <a href="{{ url_for('front_bp.my_orders') }}" class="nav-account-item">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/><path d="m9 14 2 2 4-4"/></svg>
+              <span>Order History</span>
+            </a>
+            {% else %}
+            <!-- Standard Shopper Role Links -->
+            <a href="{{ url_for('front_bp.user_profile') }}" class="nav-account-item">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <span>Profile Settings</span>
+            </a>
+            <a href="{{ url_for('front_bp.my_orders') }}" class="nav-account-item">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/><path d="m9 14 2 2 4-4"/></svg>
+              <span>Order History</span>
+            </a>
+            <a href="{{ url_for('front_bp.cart') }}" class="nav-account-item">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+              <span>My Shopping Bag</span>
+            </a>
+            <a href="{{ url_for('front_bp.product_list') }}" class="nav-account-item">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+              <span>Explore Collection</span>
+            </a>
+            {% endif %}
+            <hr class="nav-account-divider">
+            <a href="{{ url_for('front_bp.user_logout') }}" class="nav-account-item text-danger">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+              <span>Sign out</span>
+            </a>
+          </div>
+          {% else %}
+          <!-- Guest / Not Logged In State (Login & Sign Up) -->
+          <div class="nav-account-header text-center">
+            <div class="nav-account-title">Welcome to MK7</div>
+            <div class="nav-account-subtitle">Sign in to manage your account and orders</div>
+          </div>
+          <div class="nav-account-actions">
+            <a href="{{ url_for('front_bp.user_login') }}" class="nav-btn-auth-primary">
+              Log In
+            </a>
+            <a href="{{ url_for('front_bp.user_register') }}" class="nav-btn-auth-outline">
+              Sign Up
+            </a>
+          </div>
+          {% endif %}
+        </div>
+      </div>
     </div>
   </div>
 </nav>
+
+<script>
+  (function() {
+    const accountBtn = document.getElementById('navAccountBtn');
+    const accountMenu = document.getElementById('navAccountMenu');
+
+    if (accountBtn && accountMenu) {
+      accountBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const isOpen = accountMenu.classList.toggle('show');
+        accountBtn.setAttribute('aria-expanded', isOpen);
+      });
+
+      // Close dropdown when clicking outside
+      document.addEventListener('click', function(e) {
+        if (!accountBtn.contains(e.target) && !accountMenu.contains(e.target)) {
+          accountMenu.classList.remove('show');
+          accountBtn.setAttribute('aria-expanded', 'false');
+        }
+      });
+
+      // Close dropdown on Escape key
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          accountMenu.classList.remove('show');
+          accountBtn.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
+  })();
+</script>

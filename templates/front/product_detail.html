@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product.title }} | Flask Store{% endblock %}
+
+{% block content %}
+  <section class="product-detail">
+    <div class="product-detail-image">
+      <img src="{{ product.image }}" alt="{{ product.title }}">
+    </div>
+
+    <div class="product-detail-info">
+      <p class="product-category">{{ product.category }}</p>
+      <h1>{{ product.title }}</h1>
+      <p class="rating">{{ product.rating.rate }} / 5 from {{ product.rating.count }} reviews</p>
+      <div class="price mb-2">
+        <span class="fs-4 fw-bold text-dark">{{ product.price|khr_format }}</span>
+        <span class="text-muted small ms-2">{{ product.price|usd_format }}</span>
+      </div>
+      <p class="description">{{ product.description }}</p>
+      <a class="button" href="{{ url_for('front_bp.cart', product_id=product.id) }}">Add to cart</a>
+    </div>
+  </section>
+
+  <section class="section-header related-header">
+    <h2>Related products</h2>
+  </section>
+
+  {% if related_products %}
+    <section class="product-grid">
+      {% for product in related_products %}
+        <article class="product-card">
+          <a class="product-image-link" href="{{ url_for('front_bp.product_detail', product_id=product.id) }}">
+            <img src="{{ product.image }}" alt="{{ product.title }}">
+          </a>
+          <div class="product-card-body">
+            <p class="product-category">{{ product.category }}</p>
+            <h3 class="product-title">
+              <a href="{{ url_for('front_bp.product_detail', product_id=product.id) }}">{{ product.title }}</a>
+            </h3>
+            <div class="product-meta">
+              <div>
+                <strong>{{ product.price|khr_format }}</strong>
+                <span class="text-muted small d-block">{{ product.price|usd_format }}</span>
+              </div>
+              <span>{{ product.rating.rate }} / 5</span>
+            </div>
+            <a class="button" href="{{ url_for('front_bp.cart', product_id=product.id) }}">Add to cart</a>
+          </div>
+        </article>
+      {% endfor %}
+    </section>
+  {% else %}
+    <p class="empty-state">No related products yet.</p>
+  {% endif %}
+{% endblock %}

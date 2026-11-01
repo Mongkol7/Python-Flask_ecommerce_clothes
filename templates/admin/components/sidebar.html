@@ -1,0 +1,89 @@
+<!--begin::Sidebar-->
+<aside class="app-sidebar shadow" data-bs-theme="dark">
+  <!--begin::Sidebar Brand-->
+  <div class="sidebar-brand">
+    <!--begin::Brand Link-->
+    <a href="{{ url_for('admin_bp.dashboard') }}" class="brand-link">
+      <span class="brand-badge-icon">M</span>
+      <div class="brand-text-container">
+        <span class="brand-title-main">MK7 <em>Admin</em></span>
+        <span class="brand-subtitle-tag">Management Suite</span>
+      </div>
+    </a>
+    <!--end::Brand Link-->
+  </div>
+  <!--end::Sidebar Brand-->
+
+  <!--begin::Sidebar Wrapper-->
+  <div class="sidebar-wrapper">
+    <nav class="mt-3">
+      <!--begin::Sidebar Menu-->
+      <ul class="nav sidebar-menu flex-column" data-lte-toggle="treeview" role="navigation" aria-label="Main navigation"
+        data-accordion="false" id="navigation">
+
+        <li class="nav-header">CORE SUITE</li>
+
+        <!--Added Module Dashboard-->
+        <li class="nav-item">
+          <a href="{{ url_for('admin_bp.dashboard') }}" class="nav-link {{ 'active' if module == 'dashboard' else '' }}">
+            <i class="bi bi-grid-1x2-fill"></i>
+            <span>Dashboard</span>
+          </a>
+        </li>
+
+        <!--Added Module Users-->
+        <li class="nav-item">
+          <a href="{{ url_for('admin_bp.users') }}" class="nav-link {{ 'active' if module == 'users' else '' }}">
+            <i class="bi bi-people-fill"></i>
+            <span>User Management</span>
+          </a>
+        </li>
+
+        <!--Added Module Activity Logs-->
+        <li class="nav-item">
+          <a href="{{ url_for('admin_bp.activity_logs') }}" class="nav-link {{ 'active' if module == 'logs' else '' }}">
+            <i class="bi bi-clock-history"></i>
+            <span>Activity Logs</span>
+          </a>
+        </li>
+
+        <li class="nav-header">CATALOG MANAGEMENT</li>
+
+        <!--Added Module Products-->
+        <li class="nav-item">
+          <a href="{{ url_for('admin_bp.products') }}" class="nav-link {{ 'active' if module == 'products' else '' }}">
+            <i class="bi bi-box-seam-fill"></i>
+            <span>Products</span>
+          </a>
+        </li>
+
+        <!--Added Module Categories-->
+        <li class="nav-item">
+          <a href="{{ url_for('admin_bp.categories') }}" class="nav-link {{ 'active' if module == 'categories' else '' }}">
+            <i class="bi bi-tags-fill"></i>
+            <span>Categories</span>
+          </a>
+        </li>
+
+        <!--Added Module Brands-->
+        <li class="nav-item">
+          <a href="{{ url_for('admin_bp.brands') }}" class="nav-link {{ 'active' if module == 'brands' else '' }}">
+            <i class="bi bi-award-fill"></i>
+            <span>Brands</span>
+          </a>
+        </li>
+
+        <!--Added Module Orders-->
+        <li class="nav-item">
+          <a href="{{ url_for('admin_bp.orders') }}" class="nav-link {{ 'active' if module == 'orders' else '' }}">
+            <i class="bi bi-receipt-cutoff"></i>
+            <span>Customer Orders</span>
+          </a>
+        </li>
+
+      </ul>
+    </nav>
+  </div>
+  <!--end::Sidebar Wrapper-->
+</aside>
+<!--end::Sidebar-->

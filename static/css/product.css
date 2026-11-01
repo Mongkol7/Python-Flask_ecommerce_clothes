@@ -1,4 +1,4 @@
-﻿:root {
+:root {
             --black: #0a0a0a;
             --off-white: #f7f6f3;
             --muted: #8a8a8a;
@@ -111,6 +111,29 @@
         .filter-pill.active { background: var(--black); color: white; border-color: var(--black); }
         .filter-pill:hover { color: var(--black); border-color: rgba(0,0,0,0.24); }
         .filter-pill.active:hover { color: white; }
+        .category-pill-count {
+            display: inline-block;
+            font-size: 11px;
+            padding: 1px 7px;
+            border-radius: 999px;
+            background: rgba(0,0,0,0.06);
+            color: #666;
+            margin-left: 5px;
+            font-weight: 500;
+            vertical-align: middle;
+            transition: 0.2s;
+        }
+        .filter-pill.active .category-pill-count {
+            background: rgba(255,255,255,0.25);
+            color: #fff;
+        }
+        .empty-category-card {
+            background: rgba(0, 0, 0, 0.015);
+            border: 1px dashed rgba(0, 0, 0, 0.14);
+            border-radius: var(--radius-card);
+            padding: 48px 24px;
+            text-align: center;
+        }
         @media (max-width: 768px) {
             .floating-category-bar {
                 width: 100%;
@@ -219,6 +242,7 @@
             overflow: hidden;
             -webkit-box-orient: vertical;
             -webkit-line-clamp: 2;
+            line-clamp: 2;
         }
         .product-sub { font-size: 12px; color: var(--muted); margin-bottom: 12px; text-transform: capitalize; }
         .product-footer { display: flex; justify-content: space-between; align-items: center; }

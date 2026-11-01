@@ -1,33 +1,90 @@
-import json
 import os
 import re
-import urllib.error
-import urllib.parse
-import urllib.request
-import html
-#RUN: python app.py --debug
-from flask import Flask, abort, make_response, redirect, render_template, request, url_for
+from flask import Flask, session, request, render_template, abort, url_for as flask_url_for
 from markupsafe import Markup, escape
-
-from product import (
-    get_cart_items,
-    get_product_by_id,
-    get_products_by_category,
-    get_related_products,
-    products,
-    search_products,
+from sqlalchemy import text
+from config import Config
+from extensions import db, migrate, limiter, cors, csrf
+from flask_wtf.csrf import CSRFError
+from helpers import (
+    load_cart,
+    get_client_public_ip,
+    send_telegram_alert,
+    record_login_ban,
+    is_ip_login_banned,
+    record_signup_ban,
+    is_ip_signup_banned,
+    log_activity,
 )
-
+from front import front_bp
+from admin import admin_bp
+from api import api_bp
 
 app = Flask(__name__)
+app.config.from_object(Config)
 
-CART_COOKIE_NAME = "cart"
-TELEGRAM_BOT_TOKEN_ENV = "TELEGRAM_BOT_TOKEN"
-TELEGRAM_CHAT_ID_ENV = "TELEGRAM_CHAT_ID"
-TELEGRAM_BOT_TOKEN = ""
-TELEGRAM_CHAT_ID = ""
+# Ensure upload folders exist
+os.makedirs(app.config["UPLOAD_USER_FOLDER"], exist_ok=True)
+os.makedirs(app.config["UPLOAD_PRODUCT_FOLDER"], exist_ok=True)
+os.makedirs(app.config["UPLOAD_BRAND_FOLDER"], exist_ok=True)
+os.makedirs(app.config["UPLOAD_CATEGORY_FOLDER"], exist_ok=True)
+os.makedirs(app.config["UPLOAD_CAROUSEL_FOLDER"], exist_ok=True)
+
+# Initialize extensions
+db.init_app(app)
+migrate.init_app(app, db)
+limiter.init_app(app)
+
+# Ensure database tables and initial catalog seeds exist
+with app.app_context():
+    from models.seed import seed_database
+    seed_database()
+
+# Configure Flask-CORS for testing from Angular (http://localhost:4200) and other frontends
+cors.init_app(
+    app,
+    resources={
+        r"/api/*": {
+            "origins": [
+                "http://localhost:4200",
+                "http://127.0.0.1:4200",
+                "http://localhost:3000",
+                "http://127.0.0.1:3000",
+            ]
+        }
+    },
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+    supports_credentials=True,
+)
+
+csrf.init_app(app)
+
+# Exempt API blueprint from CSRF so cross-origin/external API clients can interact via CORS
+csrf.exempt(api_bp)
+
+# Register Blueprints
+app.register_blueprint(front_bp, url_prefix="/")
+app.register_blueprint(admin_bp, url_prefix="/admin")
+app.register_blueprint(api_bp, url_prefix="/api")
 
 
+# Smart url_for template global: seamlessly supports both 'home' and 'front_bp.home'
+@app.template_global("url_for")
+def smart_url_for(endpoint, **values):
+    try:
+        return flask_url_for(endpoint, **values)
+    except Exception:
+        pass
+    for prefix in ["front_bp", "admin_bp", "api_bp"]:
+        try:
+            return flask_url_for(f"{prefix}.{endpoint}", **values)
+        except Exception:
+            pass
+    return flask_url_for(endpoint, **values)
+
+
+# Template Filters
 @app.template_filter("highlight_query")
 def highlight_query(value, query):
     value = str(value)
@@ -51,332 +108,391 @@ def highlight_query(value, query):
     return Markup("".join(highlighted_parts))
 
 
-def load_cart():
-    cart_cookie = request.cookies.get(CART_COOKIE_NAME, "[]")
+@app.template_filter("profile_url")
+def profile_url(profile, user_id=None, version="thum"):
+    if not profile:
+        return ""
+    if user_id:
+        version_filename = f"{user_id}_{version}_{profile}"
+        return flask_url_for("static", filename=f"image/user/{version_filename}")
+    return flask_url_for("static", filename=f"image/user/{profile}")
 
+
+@app.template_filter("khr_format")
+def khr_format(value):
+    """Formats a price value as Cambodian Riel: e.g. 200 ៛"""
     try:
-        cart = json.loads(cart_cookie)
-    except json.JSONDecodeError:
-        return []
-
-    if not isinstance(cart, list):
-        return []
-
-    clean_cart = []
-    for item in cart:
-        if not isinstance(item, dict):
-            continue
-
-        try:
-            product_id = int(item.get("id"))
-            qty = int(item.get("qty", 1))
-        except (TypeError, ValueError):
-            continue
-
-        if qty > 0:
-            clean_cart.append({"id": product_id, "qty": qty})
-
-    return clean_cart
+        val = float(value or 0)
+        return f"{int(round(val)):,} ៛"
+    except (ValueError, TypeError):
+        return f"{value} ៛"
 
 
-def save_cart(response, cart):
-    response.set_cookie(
-        CART_COOKIE_NAME,
-        json.dumps(cart),
-        max_age=60 * 60 * 24 * 30,
-        httponly=True,
-        samesite="Lax",
-    )
-    return response
-
-
-def add_to_cart(cart, product_id):
-    for item in cart:
-        if item["id"] == product_id:
-            item["qty"] += 1
-            return cart
-
-    cart.append({"id": product_id, "qty": 1})
-    return cart
-
-
-def update_cart_item(cart, product_id, action):
-    updated_cart = []
-
-    for item in cart:
-        if item["id"] != product_id:
-            updated_cart.append(item)
-            continue
-
-        if action == "plus":
-            item["qty"] += 1
-            updated_cart.append(item)
-        elif action == "minus" and item["qty"] > 1:
-            item["qty"] -= 1
-            updated_cart.append(item)
-        elif action == "remove":
-            continue
-
-    return updated_cart
-
-
-def format_order_for_telegram(order_info):
-    shipping = order_info["shipping"]
-    lines = [
-        "<b>New MK7 Order</b>",
-        "",
-        "<b>Customer</b>",
-        f"Name: {html.escape(shipping['full_name'])}",
-        f"Phone: {html.escape(shipping['phone'])}",
-        f"Email: {html.escape(shipping['email'])}",
-        "",
-        "<b>Shipping</b>",
-        f"Address: {html.escape(shipping['address'])}",
-        f"City: {html.escape(shipping['city'])}",
-        f"Zip: {html.escape(shipping['zip_code'])}",
-    ]
-
-    if shipping["note"]:
-        lines.append(f"Note: {html.escape(shipping['note'])}")
-
-    lines.extend(
-        [
-            "",
-            "<b>Payment</b>",
-            f"Method: {html.escape(order_info['payment_method'])}",
-            "",
-            "<b>Items</b>",
-        ]
-    )
-
-    for item in order_info["items"]:
-        title = html.escape(item["title"])
-        lines.append(
-            f"- {title} x {item['qty']} | "
-            f"${item['price']:.2f} each | ${item['subtotal']:.2f}"
-        )
-
-    lines.extend(
-        [
-            "",
-            f"<b>Total: ${order_info['total']:.2f}</b>",
-        ]
-    )
-
-    return "\n".join(lines)
-
-
-def send_order_to_telegram(order_info):
-    configured_bot_token = TELEGRAM_BOT_TOKEN.strip()
-    if not configured_bot_token and ":" in TELEGRAM_BOT_TOKEN_ENV:
-        configured_bot_token = TELEGRAM_BOT_TOKEN_ENV.strip()
-
-    bot_token = (
-        os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
-        or os.environ.get(TELEGRAM_BOT_TOKEN_ENV, "").strip()
-        or configured_bot_token
-    )
-    chat_id = (
-        os.environ.get("TELEGRAM_CHAT_ID", "").strip()
-        or os.environ.get(TELEGRAM_CHAT_ID_ENV, "").strip()
-        or TELEGRAM_CHAT_ID.strip()
-    )
-
-    if not bot_token:
-        return False, "Missing Telegram bot token."
-
-    if not chat_id:
-        return False, "Missing Telegram chat ID."
-
-    payload = urllib.parse.urlencode(
-        {
-            "chat_id": chat_id,
-            "text": format_order_for_telegram(order_info),
-            "parse_mode": "HTML",
-        }
-    ).encode("utf-8")
-    request_data = urllib.request.Request(
-        f"https://api.telegram.org/bot{bot_token}/sendMessage",
-        data=payload,
-        method="POST",
-    )
-
+@app.template_filter("usd_format")
+def usd_format(value, rate=None):
+    """Converts a KHR price value to estimated USD: e.g. ≈ $0.05"""
     try:
-        with urllib.request.urlopen(request_data, timeout=10) as response:
-            response_body = response.read().decode("utf-8")
-            telegram_response = json.loads(response_body)
-
-            if telegram_response.get("ok"):
-                return True, ""
-
-            description = telegram_response.get("description", "Unknown Telegram error.")
-            return False, description
-    except urllib.error.HTTPError as error:
-        error_body = error.read().decode("utf-8", errors="replace")
-
-        try:
-            error_data = json.loads(error_body)
-            description = error_data.get("description", error_body)
-        except json.JSONDecodeError:
-            description = error_body
-
-        return False, f"Telegram HTTP {error.code}: {description}"
-    except urllib.error.URLError as error:
-        return False, f"Telegram network error: {error.reason}"
-    except TimeoutError:
-        return False, "Telegram request timed out."
+        if rate is None:
+            rate = getattr(Config, "KHR_RATE", 4000.0)
+        val = float(value or 0) / float(rate)
+        return f"≈ ${val:.2f}"
+    except (ValueError, TypeError):
+        return "$0.00"
 
 
+# Context Processors
+@app.context_processor
+def inject_currency_helpers():
+    return {
+        "khr_rate": getattr(Config, "KHR_RATE", 4000.0),
+        "khr_format": khr_format,
+        "usd_format": usd_format,
+    }
 @app.context_processor
 def inject_cart_count():
     cart_count = len({item["id"] for item in load_cart()})
     return {"cart_count": cart_count}
 
 
-@app.route("/")
-def home():
-    return render_template(
-        "home.html",
-        products=products[:4],
-        featured_products=products[4:8],
+@app.context_processor
+def inject_current_user():
+    current_admin = None
+    if session.get("is_login") and session.get("user_id"):
+        try:
+            sql = text("SELECT id, username, email, role, profile FROM user WHERE id = :id")
+            res = db.session.execute(sql, {"id": session.get("user_id")}).fetchone()
+            if res:
+                current_admin = dict(res._mapping)
+        except Exception:
+            current_admin = None
+    return dict(current_admin=current_admin, current_user=current_admin)
+
+
+# Test Routes for HTTP 500 & HTTP 400 using real errors
+@app.route("/test500")
+def test_500():
+    # Real Python runtime error: ZeroDivisionError (division by zero)
+    raise ZeroDivisionError("division by zero")
+
+
+@app.route("/api/test500")
+def api_test_500():
+    # Real Python runtime error: ZeroDivisionError (division by zero)
+    raise ZeroDivisionError("division by zero")
+
+
+@app.route("/test400")
+def test_400():
+    # Real client error: Accessing missing required query parameter raises BadRequestKeyError (HTTP 400)
+    return request.args["missing_param"]
+
+
+@app.route("/api/test400")
+def api_test_400():
+    # Real client error: Accessing missing required query parameter raises BadRequestKeyError (HTTP 400)
+    return request.args["missing_param"]
+
+
+# Error Handlers
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    is_login_route = (
+        request.path in ("/login", "/user/login", "/admin/login")
+        or (request.endpoint and "login" in request.endpoint)
+    )
+    is_signup_route = (
+        request.path in ("/register", "/signup", "/user/register", "/user/signup")
+        or (request.endpoint and ("register" in request.endpoint or "signup" in request.endpoint))
     )
 
+    # Record separated temporary bans with timer preservation
+    if is_login_route:
+        record_login_ban(60)
+    elif is_signup_route:
+        record_signup_ban(60)
 
-@app.route("/product")
-def product_list():
-    return render_template(
-        "product.html",
-        products=products,
-        category_sections=get_products_by_category(),
-    )
+    send_telegram_alert(e)
+    client_ip = get_client_public_ip()
+    err_msg = str(e.description if hasattr(e, "description") else e)
 
+    if is_login_route:
+        rem_ban = is_ip_login_banned()
+    elif is_signup_route:
+        rem_ban = is_ip_signup_banned()
+    else:
+        rem_ban = max(is_ip_login_banned(), is_ip_signup_banned())
 
-@app.route("/search")
-def search():
-    query = request.args.get("q", "").strip()
+    retry_after = rem_ban if rem_ban > 0 else 60
 
-    if not query:
-        return redirect(url_for("product_list"))
+    # Save Rate Limit Log into database (Task requirement #2: rate limit log for IP or user id)
+    user_id = session.get("user_id") if session else None
+    username = session.get("username") if session else None
+    role = session.get("role") if session else None
 
-    matched_products = search_products(query)
+    if user_id:
+        action_name = "USER_RATE_LIMIT"
+        module_name = "UserRateLimit"
+        desc = f"User '{username}' (ID: {user_id}, Role: {role}) exceeded activity rate limit on {request.method} {request.path}: {err_msg}"
+    else:
+        action_name = "IP_RATE_LIMIT"
+        module_name = "IpRateLimit"
+        desc = f"IP '{client_ip}' exceeded rate limit on {request.method} {request.path}: {err_msg}"
 
-    return render_template(
-        "search.html",
-        query=query,
-        products=matched_products,
-    )
-
-
-@app.route("/product/<int:product_id>")
-def product_detail(product_id):
-    product = get_product_by_id(product_id)
-
-    if product is None:
-        abort(404)
-
-    related_products = get_related_products(product_id)
-    return render_template(
-        "product-detail.html",
-        product=product,
-        related_products=related_products,
-    )
-
-
-@app.route("/product-detail/<int:product_id>")
-def old_product_detail(product_id):
-    return product_detail(product_id)
-
-
-@app.route("/cart")
-def cart():
-    cart_data = load_cart()
-    product_id = request.args.get("product_id", type=int)
-
-    if product_id is not None:
-        product = get_product_by_id(product_id)
-        if product is None:
-            abort(404)
-
-        cart_data = add_to_cart(cart_data, product_id)
-        response = make_response(redirect(url_for("cart")))
-        return save_cart(response, cart_data)
-
-    cart_items = get_cart_items(cart_data)
-    total = sum(item["price"] * item["qty"] for item in cart_items)
-
-    return render_template("cart.html", cart_items=cart_items, total=total)
-
-
-@app.route("/cart/update", methods=["POST"])
-def cart_update():
-    product_id = request.form.get("product_id", type=int)
-    action = request.form.get("action")
-
-    if product_id is None or action not in {"plus", "minus", "remove"}:
-        abort(400)
-
-    cart_data = load_cart()
-    cart_data = update_cart_item(cart_data, product_id, action)
-
-    response = make_response(redirect(url_for("cart")))
-    return save_cart(response, cart_data)
-
-
-@app.route("/checkout")
-def checkout():
-    cart_items = get_cart_items(load_cart())
-    total = sum(item["price"] * item["qty"] for item in cart_items)
-    return render_template(
-        "checkout.html",
-        cart_items=cart_items,
-        subtotal=total,
-        total=total,
-    )
-
-
-@app.post("/payment")
-def payment():
-    cart_data = load_cart()
-    cart_items = get_cart_items(cart_data)
-
-    if not cart_items:
-        return redirect(url_for("cart"))
-
-    subtotal = sum(item["price"] * item["qty"] for item in cart_items)
-    shipping_info = {
-        "full_name": request.form.get("full_name", "").strip(),
-        "phone": request.form.get("phone", "").strip(),
-        "email": request.form.get("email", "").strip(),
-        "address": request.form.get("address", "").strip(),
-        "city": request.form.get("city", "").strip(),
-        "zip_code": request.form.get("zip_code", "").strip(),
-        "note": request.form.get("note", "").strip(),
+    rate_limit_err_json = {
+        "status": 429,
+        "error": "Rate limit exceeded",
+        "limit_type": "user_id" if user_id else "ip",
+        "user_id": user_id,
+        "username": username,
+        "role": role,
+        "description": err_msg,
+        "ip": client_ip,
+        "endpoint": request.endpoint,
+        "path": request.path,
+        "method": request.method,
+        "retry_after": retry_after,
     }
-    order_info = {
-        "shipping": shipping_info,
-        "payment_method": request.form.get("payment_method", "qr_payment"),
-        "cart_cookie": cart_data,
-        "items": cart_items,
-        "subtotal": subtotal,
-        "total": subtotal,
-    }
-    telegram_sent, telegram_error = send_order_to_telegram(order_info)
+    log_activity(
+        action=action_name,
+        module=module_name,
+        description=desc,
+        user_id=user_id,
+        username=username or "Anonymous",
+        record_id=user_id,
+        new_data=rate_limit_err_json,
+    )
 
-    response = make_response(
+    if request.path.startswith("/api/"):
+        return {
+            "status": 429,
+            "message": "Too many requests",
+            "ip": client_ip,
+            "error": err_msg,
+            "retry_after": retry_after,
+        }, 429
+    return (
         render_template(
-            "checkout.html",
-            cart_items=cart_items,
-            subtotal=subtotal,
-            total=subtotal,
-            checkout_success=True,
-            order_info=order_info,
-            telegram_sent=telegram_sent,
-            telegram_error=telegram_error,
-        )
+            "429.html",
+            ip=client_ip,
+            error=err_msg,
+            retry_after=retry_after,
+        ),
+        429,
     )
-    response.delete_cookie(CART_COOKIE_NAME)
-    return response
 
+
+@app.route("/api/data", methods=["GET"])
+def api_data():
+    """Test endpoint for cross-origin frontend testing (CORS)."""
+    return {"message": "CORS enabled", "status": "allowed"}
+
+
+@app.errorhandler(404)
+def not_found_handler(e):
+    client_ip = get_client_public_ip()
+    err_msg = str(e.description if hasattr(e, "description") else e)
+    if request.path.startswith("/api/"):
+        return {
+            "status": 404,
+            "message": "Not found",
+            "ip": client_ip,
+            "error": err_msg,
+        }, 404
+    return (
+        render_template(
+            "404.html",
+            ip=client_ip,
+            error=err_msg,
+        ),
+        404,
+    )
+
+
+@app.errorhandler(500)
+@app.errorhandler(Exception)
+def internal_error_handler(e):
+    send_telegram_alert(e)
+    client_ip = get_client_public_ip()
+    err_msg = str(e.description if hasattr(e, "description") else e)
+
+    # Save 500 error into database activity_log (User requirement: activity logs just for rate limit and 500)
+    user_id = session.get("user_id") if session else None
+    username = session.get("username") if session else None
+    role = session.get("role") if session else None
+    err_type = type(e).__name__
+
+    err_500_json = {
+        "status": 500,
+        "error_type": err_type,
+        "message": err_msg,
+        "path": request.path,
+        "method": request.method,
+        "ip": client_ip,
+        "user_id": user_id,
+        "username": username,
+        "role": role,
+    }
+    log_activity(
+        action="500_INTERNAL_ERROR",
+        module="Error500",
+        description=f"HTTP 500 {err_type} on {request.method} {request.path}: {err_msg}",
+        user_id=user_id,
+        username=username or "Anonymous",
+        record_id=user_id,
+        new_data=err_500_json,
+    )
+
+    if request.path.startswith("/api/"):
+        return {
+            "status": 500,
+            "message": "Internal server error",
+            "ip": client_ip,
+            "error": err_msg,
+        }, 500
+    return (
+        render_template(
+            "500.html",
+            ip=client_ip,
+            error=err_msg,
+        ),
+        500,
+    )
+
+
+@app.errorhandler(CSRFError)
+def csrf_error_handler(e):
+    client_ip = get_client_public_ip()
+    err_msg = str(e.description if hasattr(e, "description") else e)
+    if (
+        request.path.startswith("/api/")
+        or request.is_json
+        or request.headers.get("Accept") == "application/json"
+        or request.headers.get("X-Requested-With") == "XMLHttpRequest"
+    ):
+        return {
+            "status": 400,
+            "message": "CSRF validation failed",
+            "ip": client_ip,
+            "error": err_msg,
+        }, 400
+    return (
+        render_template(
+            "400.html",
+            ip=client_ip,
+            error=err_msg,
+        ),
+        400,
+    )
+
+
+@app.errorhandler(400)
+def bad_request_handler(e):
+    client_ip = get_client_public_ip()
+    err_msg = str(e.description if hasattr(e, "description") else e)
+    if (
+        request.path.startswith("/api/")
+        or request.is_json
+        or request.headers.get("Accept") == "application/json"
+        or request.headers.get("X-Requested-With") == "XMLHttpRequest"
+    ):
+        return {
+            "status": 400,
+            "message": "Bad request",
+            "ip": client_ip,
+            "error": err_msg,
+        }, 400
+    return (
+        render_template(
+            "400.html",
+            ip=client_ip,
+            error=err_msg,
+        ),
+        400,
+    )
+
+
+# Load models and ensure database tables exist
+import models
+
+with app.app_context():
+    db.create_all()
+    try:
+        from models import ActivityLog
+        if ActivityLog.query.count() == 0:
+            sample_logs = [
+                ActivityLog(
+                    action="USER_RATE_LIMIT",
+                    module="UserRateLimit",
+                    user_id=1,
+                    username="admin",
+                    ip_address="127.0.0.1",
+                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+                    record_id="1",
+                    description="User 'admin' (ID: 1, Role: admin) exceeded activity rate limit on GET /admin/dashboard: 10 per 1 minute",
+                    new_data={
+                        "status": 429,
+                        "error": "Rate limit exceeded",
+                        "limit_type": "user_id",
+                        "user_id": 1,
+                        "username": "admin",
+                        "role": "admin",
+                        "description": "10 per 1 minute",
+                        "ip": "127.0.0.1",
+                        "path": "/admin/dashboard",
+                        "method": "GET",
+                        "retry_after": 60
+                    }
+                ),
+                ActivityLog(
+                    action="IP_RATE_LIMIT",
+                    module="IpRateLimit",
+                    user_id=None,
+                    username="Anonymous",
+                    ip_address="127.0.0.1",
+                    user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+                    record_id=None,
+                    description="IP '127.0.0.1' exceeded rate limit on POST /admin/login: 5 per 1 minute",
+                    new_data={
+                        "status": 429,
+                        "error": "Rate limit exceeded",
+                        "limit_type": "ip",
+                        "user_id": None,
+                        "username": "Anonymous",
+                        "description": "5 per 1 minute",
+                        "ip": "127.0.0.1",
+                        "path": "/admin/login",
+                        "method": "POST",
+                        "retry_after": 60
+                    }
+                ),
+                ActivityLog(
+                    action="500_INTERNAL_ERROR",
+                    module="Error500",
+                    user_id=None,
+                    username="Anonymous",
+                    ip_address="127.0.0.1",
+                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+                    record_id=None,
+                    description="HTTP 500 ZeroDivisionError on GET /test500: division by zero",
+                    new_data={
+                        "status": 500,
+                        "error_type": "ZeroDivisionError",
+                        "message": "division by zero",
+                        "path": "/test500",
+                        "method": "GET",
+                        "ip": "127.0.0.1",
+                        "user_id": None,
+                        "username": "Anonymous",
+                        "role": None
+                    }
+                ),
+            ]
+            for item in sample_logs:
+                db.session.add(item)
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 3000))
+    app.run(debug=True, host="0.0.0.0", port=port)

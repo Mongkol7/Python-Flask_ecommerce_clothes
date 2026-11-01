@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MK7 - Order History</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,200;0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=Playfair+Display:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/cart.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+    <style>
+        .orders-wrap {
+            padding: 130px 0 100px;
+            min-height: 80vh;
+        }
+        .order-card {
+            background: #ffffff;
+            border-radius: 24px;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.04);
+            padding: 32px;
+            margin-bottom: 28px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .order-card:hover {
+            box-shadow: 0 8px 36px rgba(0, 0, 0, 0.07);
+        }
+        .order-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+            margin-bottom: 24px;
+        }
+        .order-num {
+            font-family: 'DM Sans', sans-serif;
+            font-size: 19px;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+            color: var(--black);
+            margin: 0;
+        }
+        .order-date {
+            font-size: 13px;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+        .badge-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 100px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+        }
+        .badge-pending {
+            background: #fff8e6;
+            color: #b45309;
+            border: 1px solid #fde68a;
+        }
+        .badge-success {
+            background: #ecfdf5;
+            color: #047857;
+            border: 1px solid #a7f3d0;
+        }
+        .badge-cancelled {
+            background: #f3f4f6;
+            color: #6b7280;
+            border: 1px solid #e5e7eb;
+        }
+        .badge-shipped {
+            background: #eff6ff;
+            color: #1d4ed8;
+            border: 1px solid #bfdbfe;
+        }
+        .badge-delivered {
+            background: #f5f3ff;
+            color: #6d28d9;
+            border: 1px solid #ddd6fe;
+        }
+        .cancel-window-alert {
+            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+            border: 1px solid #fde68a;
+            border-radius: 18px;
+            padding: 18px 22px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+        .cancel-timer-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #ffffff;
+            color: #92400e;
+            padding: 4px 12px;
+            border-radius: 100px;
+            font-weight: 700;
+            font-size: 13px;
+            border: 1px solid #fcd34d;
+        }
+        .order-item-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 0;
+            border-bottom: 1px dashed rgba(0, 0, 0, 0.06);
+        }
+        .order-item-row:last-child {
+            border-bottom: none;
+        }
+        .order-item-thumb {
+            width: 58px;
+            height: 58px;
+            border-radius: 12px;
+            object-fit: cover;
+            background: #f7f6f3;
+            border: 1px solid rgba(0, 0, 0, 0.06);
+        }
+        .order-item-title {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--black);
+            margin: 0;
+        }
+        .order-item-meta {
+            font-size: 13px;
+            color: var(--muted);
+        }
+        .order-footer-details {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+            background: #fbfbf9;
+            border-radius: 16px;
+            padding: 16px 20px;
+            margin-top: 20px;
+        }
+        .order-total-price {
+            font-family: 'DM Sans', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--black);
+        }
+        .btn-pay-now-order {
+            background: #e11d48;
+            color: #ffffff;
+            border: 1px solid #e11d48;
+            border-radius: 100px;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 8px 18px;
+            transition: all 0.2s;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 4px 12px rgba(225, 29, 72, 0.25);
+        }
+        .btn-pay-now-order:hover {
+            background: #be123c;
+            border-color: #be123c;
+            color: #ffffff;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(225, 29, 72, 0.35);
+        }
+        .btn-cancel-order {
+            background: #fee2e2;
+            color: #dc2626;
+            border: 1px solid #fca5a5;
+            border-radius: 100px;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 8px 18px;
+            transition: all 0.2s;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .btn-cancel-order:hover {
+            background: #dc2626;
+            color: #ffffff;
+            border-color: #dc2626;
+        }
+        .status-finalized-box {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #166534;
+            border-radius: 14px;
+            padding: 12px 18px;
+            font-size: 13.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .status-cancelled-box {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            color: #4b5563;
+            border-radius: 14px;
+            padding: 12px 18px;
+            font-size: 13.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+{% include "components/navbar.html" %}
+
+<main class="orders-wrap">
+    <div class="container">
+        <!-- Page Title & Header -->
+        <div class="row mb-5">
+            <div class="col-lg-8">
+                <p class="section-label">Account Activity</p>
+                <h1 class="hero-title">Order <em>History</em></h1>
+                <p class="text-muted">Review your purchases, check real-time status, and cancel eligible orders within 4 hours of checkout.</p>
+            </div>
+            <div class="col-lg-4 d-flex align-items-center justify-content-lg-end mt-3 mt-lg-0">
+                <a href="{{ url_for('front_bp.product_list') }}" class="btn-pill-dark">
+                    Browse Collection
+                </a>
+            </div>
+        </div>
+
+        <!-- Flash Feedback Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="mb-4">
+            {% for category, message in messages %}
+            <div class="alert alert-{{ 'danger' if category in ['error', 'danger'] else ('warning' if category == 'warning' else 'success') }} alert-dismissible fade show rounded-4 shadow-sm" role="alert">
+                <i class="bi bi-info-circle-fill me-2"></i> {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        {% if orders_data %}
+        <div class="orders-list">
+            {% for item in orders_data %}
+            {% set order = item.order %}
+            <article class="order-card">
+                <!-- Order Card Top Bar -->
+                <div class="order-card-header">
+                    <div>
+                        <h2 class="order-num">{{ order.order_number }}</h2>
+                        <div class="order-date">
+                            <i class="bi bi-calendar3 me-1"></i> Placed on {{ order.created_at.strftime('%B %d, %Y at %I:%M %p') if order.created_at else 'Recent' }} (UTC)
+                        </div>
+                    </div>
+                    <div>
+                        {% if order.status == 'pending' %}
+                        <span class="badge-status badge-pending">
+                            <i class="bi bi-hourglass-split"></i> Pending
+                        </span>
+                        {% elif order.status in ['confirmed', 'success'] %}
+                        <span class="badge-status badge-success">
+                            <i class="bi bi-check-circle-fill"></i> {{ 'Confirmed' if order.status == 'confirmed' else 'Success' }}
+                        </span>
+                        {% elif order.status == 'cancelled' %}
+                        <span class="badge-status badge-cancelled">
+                            <i class="bi bi-x-circle-fill"></i> Cancelled
+                        </span>
+                        {% elif order.status == 'shipped' %}
+                        <span class="badge-status badge-shipped">
+                            <i class="bi bi-truck"></i> Shipped
+                        </span>
+                        {% elif order.status == 'delivered' %}
+                        <span class="badge-status badge-delivered">
+                            <i class="bi bi-box2-heart"></i> Delivered
+                        </span>
+                        {% else %}
+                        <span class="badge-status badge-pending">{{ order.status.title() }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Pending Payment & Cancellation Action Bar -->
+                {% if order.status == 'pending' %}
+                <div class="cancel-window-alert">
+                    <div class="d-flex align-items-center gap-3">
+                        <i class="bi bi-hourglass-split fs-4 text-warning"></i>
+                        <div>
+                            <div class="fw-semibold text-dark mb-1">
+                                Awaiting Payment {% if item.can_cancel %}&bull; 4-Hour Cancellation Active{% endif %}
+                            </div>
+                            <div class="small text-muted">
+                                {% if item.can_cancel %}
+                                You can pay with Bakong KHQR, or cancel before the timer expires:
+                                <span class="cancel-timer-pill ms-2" id="timer-{{ order.id }}" data-remaining="{{ item.remaining_seconds }}">
+                                    <i class="bi bi-stopwatch"></i>
+                                    <span class="timer-text">{{ item.hours_left }}h {{ item.mins_left }}m left</span>
+                                </span>
+                                {% else %}
+                                <span>Please scan the Bakong KHQR code to finalize your order.</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <button type="button" class="btn-pay-now-order btn-pay-trigger" data-order-id="{{ order.id }}" data-order-number="{{ order.order_number }}">
+                            <i class="bi bi-qr-code-scan me-1"></i> Pay Now (KHQR)
+                        </button>
+                        {% if item.can_cancel %}
+                        <button type="button" class="btn-cancel-order" data-bs-toggle="modal" data-bs-target="#cancelModal-{{ order.id }}">
+                            <i class="bi bi-slash-circle me-1"></i> Cancel Order
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Cancel Confirmation Modal -->
+                <div class="modal fade" id="cancelModal-{{ order.id }}" tabindex="-1" aria-labelledby="cancelModalLabel-{{ order.id }}" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content rounded-4 border-0 shadow-lg">
+                            <div class="modal-header border-0 pb-0">
+                                <h5 class="modal-title fw-bold" id="cancelModalLabel-{{ order.id }}">Cancel Order #{{ order.order_number }}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body py-4">
+                                <p class="text-secondary mb-3">
+                                    Are you sure you want to cancel this order?
+                                </p>
+                                <div class="p-3 bg-light rounded-3 small text-muted">
+                                    <ul class="mb-0 ps-3">
+                                        <li>Your order status will be updated to <strong>Cancelled</strong>.</li>
+                                        <li>All reserved items ({{ order.items|length }} piece{% if order.items|length > 1 %}s{% endif %}) will be instantly returned to stock.</li>
+                                        <li>Any processing charges will be refunded.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="modal-footer border-0 pt-0">
+                                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Keep Order</button>
+                                <form action="{{ url_for('front_bp.cancel_order', order_id=order.id) }}" method="POST" style="margin: 0;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-danger rounded-pill px-4">
+                                        Yes, Cancel Order
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% elif order.status in ['confirmed', 'success'] %}
+                <div class="status-finalized-box">
+                    <i class="bi bi-check2-all fs-5"></i>
+                    <span>The 4-hour cancellation period has completed. This order is finalized with status <strong>Confirmed</strong>.</span>
+                </div>
+                {% elif order.status == 'cancelled' %}
+                <div class="status-cancelled-box">
+                    <i class="bi bi-info-circle fs-5"></i>
+                    <span>This order has been cancelled and products were restored to inventory.</span>
+                </div>
+                {% endif %}
+
+                <!-- Purchased Items List -->
+                <div class="order-items-list mb-3">
+                    {% for oitem in order.items %}
+                    <div class="order-item-row">
+                        <div class="d-flex align-items-center gap-3">
+                            {% if oitem.product_image %}
+                            <img src="{{ oitem.product_image }}" alt="{{ oitem.product_title }}" class="order-item-thumb">
+                            {% else %}
+                            <div class="order-item-thumb d-flex align-items-center justify-content-center text-muted">
+                                <i class="bi bi-box-seam"></i>
+                            </div>
+                            {% endif %}
+                            <div>
+                                <h3 class="order-item-title">{{ oitem.product_title }}</h3>
+                                <div class="order-item-meta">
+                                    {{ oitem.product_price|khr_format }} ({{ oitem.product_price|usd_format }}) &times; {{ oitem.quantity }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="fw-semibold text-dark text-end">
+                            <div>{{ oitem.subtotal|khr_format }}</div>
+                            <div class="small text-muted fw-normal" style="font-size: 0.8rem;">{{ oitem.subtotal|usd_format }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Order Details & Shipping Footer -->
+                <div class="order-footer-details">
+                    <div class="small text-muted">
+                        <div>
+                            <strong>Recipient:</strong> {{ order.customer_name }}
+                            {% if order.customer_phone %}&bull; {{ order.customer_phone }}{% endif %}
+                        </div>
+                        <div>
+                            <strong>Shipping To:</strong> {{ order.shipping_address or 'Standard Shipping' }}{% if order.city %}, {{ order.city }}{% endif %}{% if order.zip_code %} ({{ order.zip_code }}){% endif %}
+                        </div>
+                        <div>
+                            <strong>Payment:</strong> {{ order.payment_method.replace('_', ' ').title() }}
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <div class="small text-muted text-uppercase" style="letter-spacing: 1px;">Total Amount</div>
+                        <div class="order-total-price">
+                            {{ order.total|khr_format }}
+                            <div class="small text-muted fw-normal" style="font-size: 0.85rem;">{{ order.total|usd_format }}</div>
+                        </div>
+                    </div>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <!-- Empty State -->
+        <section class="empty-card text-center py-5">
+            <div class="mb-4">
+                <i class="bi bi-bag-x text-muted" style="font-size: 58px;"></i>
+            </div>
+            <p class="section-label">No Orders Placed</p>
+            <h2 class="hero-title empty-title" style="font-size: 42px;">Your History is <em>Fresh</em></h2>
+            <p class="text-muted mb-4">You have not placed any orders yet. Discover our latest arrivals and luxury pieces.</p>
+            <a class="btn-pill-dark" href="{{ url_for('front_bp.product_list') }}">Start Shopping</a>
+        </section>
+        {% endif %}
+    </div>
+</main>
+
+<!-- Bakong KHQR Pay Now Modal for Pending Orders -->
+<div class="modal fade" id="payNowModal" tabindex="-1" aria-labelledby="payNowModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg text-center overflow-hidden">
+            <div class="modal-header border-0 pb-0 justify-content-between align-items-center">
+                <span class="badge" style="background: #e11d48; color: #fff; font-size: 11px; letter-spacing: 0.5px; border-radius: 100px; padding: 5px 12px; font-weight: 600;">
+                    KHQR &bull; National Bank of Cambodia
+                </span>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-4 px-4">
+                <h4 class="fw-bold mb-1" id="payModalOrderNumber">Pay Order</h4>
+                <p class="text-muted small mb-3">Scan with Bakong or any banking app (ABA, Acleda, Wing, etc.)</p>
+
+                <!-- Loading State -->
+                <div id="payModalLoading" class="py-5">
+                    <div class="spinner-border text-danger" role="status"></div>
+                    <div class="small text-muted mt-2">Generating Bakong KHQR...</div>
+                </div>
+
+                <!-- Error State -->
+                <div id="payModalError" style="display: none;" class="py-4 text-danger small">
+                    <i class="bi bi-exclamation-triangle fs-3 d-block mb-2"></i>
+                    <span id="payModalErrorText">Unable to generate KHQR code.</span>
+                </div>
+
+                <!-- QR Content -->
+                <div id="payModalContent" style="display: none;">
+                    <div class="d-inline-block p-2 bg-white rounded-3 shadow-sm border mb-3">
+                        <img id="payModalQRImg" src="" alt="Bakong KHQR" style="width: 200px; height: 200px; object-fit: contain;">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="fs-4 fw-bold text-dark" id="payModalAmountKHR">0 ៛</div>
+                        <div class="text-muted small" id="payModalAmountUSD">≈ $0.00</div>
+                    </div>
+
+                    <div class="p-2 rounded-3 bg-light border small text-muted mb-3 d-flex align-items-center justify-content-center gap-2">
+                        <span id="payModalStatusBadge" class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-3 py-2">
+                            <span class="spinner-grow spinner-grow-sm me-1" role="status" aria-hidden="true" style="width: 8px; height: 8px;"></span>
+                            Awaiting Banking Transfer...
+                        </span>
+                    </div>
+
+                    <div class="small text-muted mb-3" style="font-size: 12px; line-height: 1.6;">
+                        <div>Merchant: <strong id="payModalMerchant">MK7 LUXURY STORE</strong></div>
+                        <div>Account ID: <code id="payModalAccount">thoeung_sereymongkol@bkrt</code></div>
+                    </div>
+
+                    <!-- Single Clean Verification Button -->
+                    <div class="mt-3">
+                        <button type="button" class="btn btn-dark rounded-pill px-4 py-2 w-100 fw-semibold" id="payModalVerifyBtn" onclick="verifyOrderPaymentNow()">
+                            <i class="bi bi-check-circle me-1"></i> I Have Paid — Verify Payment
+                        </button>
+                        <div id="payModalFeedback" class="small mt-2" style="display: none;"></div>
+                    </div>
+                </div>
+
+                <!-- Success State -->
+                <div id="payModalSuccess" style="display: none;" class="py-4">
+                    <div class="text-success mb-3" style="font-size: 54px;">
+                        <i class="bi bi-check-circle-fill"></i>
+                    </div>
+                    <h4 class="fw-bold text-success mb-2">Payment Confirmed!</h4>
+                    <p class="text-muted small">Your payment has been verified via NBC Bakong. Your order is now Confirmed.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentPayOrderId = null;
+let currentPayMD5 = null;
+
+function verifyOrderPaymentNow() {
+    if (!currentPayOrderId || !currentPayMD5) return;
+
+    const verifyBtn = document.getElementById('payModalVerifyBtn');
+    const badge = document.getElementById('payModalStatusBadge');
+    const feedback = document.getElementById('payModalFeedback');
+
+    if (verifyBtn) {
+        verifyBtn.disabled = true;
+        verifyBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Verifying Transfer...';
+    }
+
+    fetch('/orders/' + currentPayOrderId + '/confirm-payment?md5=' + encodeURIComponent(currentPayMD5))
+        .then(r => r.json())
+        .then(resData => {
+            if (verifyBtn) {
+                verifyBtn.disabled = false;
+                verifyBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i> I Have Paid — Verify Payment';
+            }
+
+            if (resData.paid) {
+                document.getElementById('payModalContent').style.display = 'none';
+                document.getElementById('payModalSuccess').style.display = 'block';
+
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else if (resData.rate_limited) {
+                // If developer quota is exceeded, allow one-click confirmation for real transfer
+                badge.className = 'badge bg-warning text-dark border rounded-pill px-3 py-2';
+                badge.innerHTML = '<i class="bi bi-info-circle"></i> NBC Daily Limit (100) Active';
+                if (feedback) {
+                    feedback.style.display = 'block';
+                    feedback.className = 'small text-muted p-2 bg-light rounded text-center';
+                    feedback.innerHTML = 'NBC developer limit reached. <a href="#" class="fw-bold text-dark text-decoration-underline" onclick="forceConfirmPayment(event)">Click here to confirm your transfer</a>.';
+                }
+            } else {
+                badge.className = 'badge bg-light text-secondary border rounded-pill px-3 py-2';
+                badge.innerHTML = '<i class="bi bi-clock"></i> Transfer Not Detected Yet';
+                if (feedback) {
+                    feedback.style.display = 'block';
+                    feedback.className = 'small text-danger p-2 bg-danger-subtle rounded text-center';
+                    feedback.innerHTML = 'Payment not detected yet. Please ensure you completed the transfer on your banking app, then tap Verify Payment.';
+                }
+            }
+        })
+        .catch(() => {
+            if (verifyBtn) {
+                verifyBtn.disabled = false;
+                verifyBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i> I Have Paid — Verify Payment';
+            }
+        });
+}
+
+function forceConfirmPayment(e) {
+    if (e) e.preventDefault();
+    if (!currentPayOrderId || !currentPayMD5) return;
+
+    const verifyBtn = document.getElementById('payModalVerifyBtn');
+    if (verifyBtn) {
+        verifyBtn.disabled = true;
+        verifyBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Confirming Order...';
+    }
+
+    fetch('/orders/' + currentPayOrderId + '/confirm-payment?md5=' + encodeURIComponent(currentPayMD5) + '&manual_confirm=1')
+        .then(r => r.json())
+        .then(resData => {
+            if (resData.paid) {
+                document.getElementById('payModalContent').style.display = 'none';
+                document.getElementById('payModalSuccess').style.display = 'block';
+                setTimeout(() => window.location.reload(), 1500);
+            }
+        })
+        .catch(() => {
+            if (verifyBtn) verifyBtn.disabled = false;
+        });
+}
+
+function openPaymentModal(orderId, orderNumber) {
+    currentPayOrderId = orderId;
+    currentPayMD5 = null;
+
+    const modalEl = document.getElementById('payNowModal');
+    const bsModal = new bootstrap.Modal(modalEl);
+
+    document.getElementById('payModalOrderNumber').textContent = 'Pay Order #' + orderNumber;
+    document.getElementById('payModalLoading').style.display = 'block';
+    document.getElementById('payModalContent').style.display = 'none';
+    document.getElementById('payModalError').style.display = 'none';
+    document.getElementById('payModalSuccess').style.display = 'none';
+    const feedback = document.getElementById('payModalFeedback');
+    if (feedback) feedback.style.display = 'none';
+
+    bsModal.show();
+
+    // Fetch dynamic KHQR data (no background interval polling)
+    fetch('/orders/' + orderId + '/khqr')
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success) {
+                document.getElementById('payModalLoading').style.display = 'none';
+                document.getElementById('payModalError').style.display = 'block';
+                document.getElementById('payModalErrorText').textContent = data.error || 'Failed to load KHQR';
+                return;
+            }
+
+            currentPayMD5 = data.md5;
+
+            document.getElementById('payModalQRImg').src = data.base64_uri;
+            document.getElementById('payModalAmountKHR').textContent = data.amount_khr;
+            document.getElementById('payModalAmountUSD').textContent = data.amount_usd;
+            document.getElementById('payModalMerchant').textContent = data.merchant_name;
+            document.getElementById('payModalAccount').textContent = data.account_id;
+
+            document.getElementById('payModalLoading').style.display = 'none';
+            document.getElementById('payModalContent').style.display = 'block';
+        })
+        .catch(err => {
+            document.getElementById('payModalLoading').style.display = 'none';
+            document.getElementById('payModalError').style.display = 'block';
+            document.getElementById('payModalErrorText').textContent = 'Network error loading payment gateway.';
+        });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Event delegation for Pay Now buttons
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.btn-pay-trigger');
+        if (btn) {
+            e.preventDefault();
+            const orderId = btn.getAttribute('data-order-id');
+            const orderNum = btn.getAttribute('data-order-number');
+            if (orderId) {
+                openPaymentModal(orderId, orderNum);
+            }
+        }
+    });
+
+
+});
+</script>
+
+<!-- Live Countdown Timer Script for 4-Hour Cancellation -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const timerPills = document.querySelectorAll('[data-remaining]');
+    
+    function formatTime(seconds) {
+        if (seconds <= 0) return '0h 0m left (expired)';
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = Math.floor(seconds % 60);
+        return `${h}h ${m}m ${s}s left`;
+    }
+
+    timerPills.forEach(pill => {
+        let remaining = parseInt(pill.getAttribute('data-remaining'), 10) || 0;
+        const textSpan = pill.querySelector('.timer-text');
+
+        if (remaining > 0 && textSpan) {
+            const interval = setInterval(() => {
+                remaining -= 1;
+                if (remaining <= 0) {
+                    clearInterval(interval);
+                    textSpan.textContent = 'Window expired (Finalizing)';
+                    // Reload page after expiry to trigger backend transition to Success
+                    setTimeout(() => window.location.reload(), 2000);
+                } else {
+                    textSpan.textContent = formatTime(remaining);
+                }
+            }, 1000);
+        }
+    });
+});
+</script>
+
+<!-- Bootstrap JS Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+{% include "components/footer.html" %}
+</body>
+</html>

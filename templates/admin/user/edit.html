@@ -1,0 +1,210 @@
+{% extends 'admin/master.html' %}
+
+{% block page_header %}
+<div class="row align-items-center">
+  <div class="col-sm-6">
+    <span class="kicker-tag">Account Modification</span>
+    <h2 class="page-main-heading">Edit <em>User</em> #{{ user.id }}</h2>
+  </div>
+  <div class="col-sm-6">
+    <ul class="breadcrumb-mk7 justify-content-sm-end mt-2 mt-sm-0">
+      <li><a href="{{ url_for('admin_bp.dashboard') }}">Admin</a></li>
+      <li class="breadcrumb-separator"><i class="bi bi-chevron-right"></i></li>
+      <li><a href="{{ url_for('admin_bp.users') }}">Users</a></li>
+      <li class="breadcrumb-separator"><i class="bi bi-chevron-right"></i></li>
+      <li class="text-dark fw-semibold">Edit</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8 col-md-10">
+    <div class="card-mk7">
+      <div class="card-mk7-header">
+        <div>
+          <span class="kicker-tag">User Profile</span>
+          <h3 class="card-mk7-title">Update <em>{{ user.username }}</em></h3>
+        </div>
+        <span class="badge-mk7 {{ 'badge-role-admin' if user.role == 'admin' else 'badge-role-user' }}">
+          {{ user.role|upper }}
+        </span>
+      </div>
+      <!-- /.card-header -->
+
+      <div class="card-mk7-body">
+        <form id="editUserForm" method="POST" action="{{ url_for('admin_bp.user_edit', user_id=user.id) }}" enctype="multipart/form-data">
+          <!-- CSRF token -->
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          <!-- Profile Image -->
+          <div class="avatar-picker-container">
+            <div class="mb-2">
+              {% if user.profile %}
+              <img id="imagePreview"
+                   src="{{ user.profile | profile_url(user.id, 'org') }}"
+                   alt="Preview"
+                   class="avatar-picker-preview mx-auto"
+                   title="Click to choose new photo">
+              <div id="noImgPreview" class="avatar-picker-placeholder d-none mx-auto" title="Click to choose photo">
+                <i class="bi bi-camera fs-4"></i>
+                <span style="font-size: 11px; font-weight: 500;">Upload Photo</span>
+              </div>
+              {% else %}
+              <div id="noImgPreview" class="avatar-picker-placeholder mx-auto" title="Click to choose photo">
+                <i class="bi bi-camera fs-4"></i>
+                <span style="font-size: 11px; font-weight: 500;">Upload Photo</span>
+              </div>
+              <img id="imagePreview"
+                   src=""
+                   alt="Preview"
+                   class="avatar-picker-preview d-none mx-auto"
+                   title="Click to choose new photo">
+              {% endif %}
+            </div>
+            <input type="file" id="imageInput" name="image" class="d-none" accept="image/*">
+            <button type="button" class="btn-pill-outline" id="chooseImageBtn" style="padding: 5px 16px; font-size: 12px;">
+              <i class="bi bi-image"></i> Change Image
+            </button>
+            <div class="text-muted small mt-2" style="font-size: 11.5px;">PNG, JPG, or GIF up to 2MB (Leave unchanged to keep current photo)</div>
+          </div>
+
+          <hr class="my-4" style="border-color: var(--border);">
+
+          <!-- Name -->
+          <div class="mb-4">
+            <label for="userName" class="form-label fw-bold small text-uppercase" style="letter-spacing: 0.08em; color: var(--muted);">
+              Full Name
+            </label>
+            <div class="input-group">
+              <span class="input-group-text bg-transparent border-end-0" style="border-color: var(--border); border-radius: var(--radius-sm) 0 0 var(--radius-sm);">
+                <i class="bi bi-person text-muted"></i>
+              </span>
+              <input type="text" class="form-control form-control-mk7 border-start-0" id="userName" name="name"
+                     value="{{ user.username }}" placeholder="Enter full name" required style="border-radius: 0 var(--radius-sm) var(--radius-sm) 0 !important;">
+            </div>
+          </div>
+
+          <!-- Email -->
+          <div class="mb-4">
+            <label for="userEmail" class="form-label fw-bold small text-uppercase" style="letter-spacing: 0.08em; color: var(--muted);">
+              Email Address
+            </label>
+            <div class="input-group">
+              <span class="input-group-text bg-transparent border-end-0" style="border-color: var(--border); border-radius: var(--radius-sm) 0 0 var(--radius-sm);">
+                <i class="bi bi-envelope text-muted"></i>
+              </span>
+              <input type="email" class="form-control form-control-mk7 border-start-0" id="userEmail" name="email"
+                     value="{{ user.email }}" placeholder="Enter email address" required style="border-radius: 0 var(--radius-sm) var(--radius-sm) 0 !important;">
+            </div>
+          </div>
+
+          <!-- Password -->
+          <div class="mb-4">
+            <label for="userPassword" class="form-label fw-bold small text-uppercase" style="letter-spacing: 0.08em; color: var(--muted);">
+              New Password (Optional)
+            </label>
+            <div class="input-group">
+              <span class="input-group-text bg-transparent border-end-0" style="border-color: var(--border); border-radius: var(--radius-sm) 0 0 var(--radius-sm);">
+                <i class="bi bi-lock text-muted"></i>
+              </span>
+              <input type="password" class="form-control form-control-mk7 border-start-0" id="userPassword" name="password"
+                     placeholder="Leave blank to keep existing password" style="border-radius: 0 var(--radius-sm) var(--radius-sm) 0 !important;">
+            </div>
+          </div>
+
+          <!-- Role -->
+          <div class="mb-4">
+            <label for="userRole" class="form-label fw-bold small text-uppercase" style="letter-spacing: 0.08em; color: var(--muted);">
+              Account Role
+            </label>
+            <div class="input-group">
+              <span class="input-group-text bg-transparent border-end-0" style="border-color: var(--border); border-radius: var(--radius-sm) 0 0 var(--radius-sm);">
+                <i class="bi bi-shield-lock text-muted"></i>
+              </span>
+              <select class="form-select form-select-mk7 border-start-0" id="userRole" name="role" required style="border-radius: 0 var(--radius-sm) var(--radius-sm) 0 !important;">
+                <option value="user" {{ 'selected' if user.role == 'user' }}>User (Standard shopper)</option>
+                <option value="admin" {{ 'selected' if user.role == 'admin' }}>Admin (Full system access)</option>
+              </select>
+            </div>
+          </div>
+
+          <hr class="my-4" style="border-color: var(--border);">
+
+          <!-- Buttons -->
+          <div class="d-flex align-items-center justify-content-between">
+            <a href="{{ url_for('admin_bp.users') }}" class="btn-pill-outline">
+              <i class="bi bi-arrow-left"></i> Back to Users
+            </a>
+            <div class="d-flex gap-2">
+              <button type="reset" class="btn-pill-outline">
+                <i class="bi bi-arrow-counterclockwise"></i> Reset
+              </button>
+              <button type="submit" class="btn-pill-primary">
+                <i class="bi bi-check2"></i> Save Changes
+              </button>
+            </div>
+          </div>
+
+        </form>
+      </div>
+      <!-- /.card-body -->
+    </div>
+    <!-- /.card-mk7 -->
+  </div>
+  <!-- /.col -->
+</div>
+<!-- /.row -->
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const imageInput = document.getElementById('imageInput');
+    const imagePreview = document.getElementById('imagePreview');
+    const chooseImageBtn = document.getElementById('chooseImageBtn');
+    const defaultSrc = "{{ user.profile | profile_url(user.id, 'org') if user.profile else '' }}";
+    const noImgPreview = document.getElementById('noImgPreview');
+
+    // Click the hidden file input when button, image, or placeholder is clicked
+    chooseImageBtn.addEventListener('click', function () {
+      imageInput.click();
+    });
+    imagePreview.addEventListener('click', function () {
+      imageInput.click();
+    });
+    if (noImgPreview) {
+      noImgPreview.addEventListener('click', function () {
+        imageInput.click();
+      });
+    }
+
+    // Preview selected image using URL.createObjectURL
+    imageInput.addEventListener('change', function (event) {
+      const file = event.target.files[0];
+      if (file) {
+        imagePreview.src = URL.createObjectURL(file);
+        imagePreview.classList.remove('d-none');
+        if (noImgPreview) noImgPreview.classList.add('d-none');
+        imagePreview.onload = function () {
+          URL.revokeObjectURL(imagePreview.src); // free memory
+        };
+      }
+    });
+
+    // Reset image preview when form is reset
+    document.getElementById('editUserForm').addEventListener('reset', function () {
+      setTimeout(function () {
+        if (defaultSrc) {
+          imagePreview.src = defaultSrc;
+          imagePreview.classList.remove('d-none');
+          if (noImgPreview) noImgPreview.classList.add('d-none');
+        } else {
+          imagePreview.src = '';
+          imagePreview.classList.add('d-none');
+          if (noImgPreview) noImgPreview.classList.remove('d-none');
+        }
+      }, 0);
+    });
+  });
+</script>
+{% endblock %}

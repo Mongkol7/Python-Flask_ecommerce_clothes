@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>429 Too Many Requests | MK7</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+
+  <!-- Shared Luxury Error Stylesheet -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/error.css') }}" />
+</head>
+
+<body class="error-page error-429">
+  <!-- Top Navigation Header -->
+  <header class="error-navbar">
+    <a href="{{ url_for('front_bp.home') }}" class="error-brand">
+      <span class="brand-symbol">M</span>
+      <span class="brand-name">MK7 <em>Editorial</em></span>
+    </a>
+    <a href="{{ url_for('front_bp.home') }}" class="error-nav-link">
+      <i class="bi bi-arrow-left me-1"></i> Return Home
+    </a>
+  </header>
+
+  <!-- Center Content Stage -->
+  <main class="error-stage">
+    <div class="error-card">
+      <div class="error-badge-row">
+        <span class="status-pill">
+          <span class="status-pulse-dot"></span> Rate Limit Enforced
+        </span>
+      </div>
+
+      <div class="error-code-numeral">429</div>
+
+      <h1 class="error-title">Too Many <em>Requests</em></h1>
+
+      <p class="error-description">
+        You have temporarily exceeded the permitted request rate for this portal. To safeguard the stability and security of the storefront, please pause for a brief moment before submitting additional requests.
+      </p>
+
+      <!-- IP & Diagnostic Information -->
+      <div class="error-meta-box">
+        <div class="error-meta-item">
+          <span class="error-meta-label">
+            <i class="bi bi-hdd-network"></i> Requesting Device IP
+          </span>
+          <span class="error-meta-value">{{ ip }}</span>
+        </div>
+        <div class="error-meta-item" style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(0,0,0,0.08);">
+          <span class="error-meta-label">
+            <i class="bi bi-hourglass-split"></i> Cooldown Timer
+          </span>
+          <span class="error-meta-value" id="cooldownTimer" style="color: var(--accent-color); font-weight: 600;">
+            <span id="countdownSec">{{ retry_after|default(60) }}</span>s remaining
+          </span>
+        </div>
+        {% if error %}
+        <div class="error-meta-detail">
+          <strong>Limit Notice:</strong> <code>{{ error }}</code>
+        </div>
+        {% endif %}
+      </div>
+
+      {# <!-- Offline Dino Runner Arcade Mini-Window (Disabled)
+      {% include "components/dino_game.html" %} --> #}
+
+      <!-- Action Buttons -->
+      <div class="error-actions">
+        <a href="{{ url_for('front_bp.home') }}" class="btn-pill-primary">
+          <i class="bi bi-house"></i> Back to Storefront
+        </a>
+        <button type="button" id="tryAgainBtn" onclick="retryRequest()" class="btn-pill-secondary">
+          <i class="bi bi-arrow-clockwise"></i> <span id="tryAgainText">Try Again</span>
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer Info -->
+  <footer class="error-footer">
+    <span>&copy; 2026 MK7 Atelier &bull; Automated Traffic Protection</span>
+    <div class="error-footer-links">
+      <a href="{{ url_for('front_bp.home') }}">Home</a>
+      <a href="{{ url_for('front_bp.product_list') }}">Collections</a>
+      <a href="{{ url_for('front_bp.user_register') }}">Sign Up</a>
+    </div>
+  </footer>
+
+  <script>
+    function retryRequest() {
+      window.location.href = window.location.pathname + window.location.search;
+    }
+
+    (function() {
+      let seconds = parseInt("{{ retry_after|default(60) }}", 10);
+      if (isNaN(seconds) || seconds <= 0) seconds = 60;
+
+      const secEl = document.getElementById("countdownSec");
+      const timerEl = document.getElementById("cooldownTimer");
+      const btn = document.getElementById("tryAgainBtn");
+      const btnText = document.getElementById("tryAgainText");
+
+      function updateButton() {
+        if (seconds > 0) {
+          if (btnText) btnText.textContent = `Try Again (${seconds}s)`;
+          if (btn) {
+            btn.title = `Please wait ${seconds}s for the rate-limit cooldown to complete`;
+          }
+        } else {
+          if (btnText) btnText.textContent = "Try Again Now";
+          if (timerEl) {
+            timerEl.innerHTML = '<span style="color: #15803d;"><i class="bi bi-check-circle me-1"></i>Ready to Retry</span>';
+          }
+          if (btn) {
+            btn.title = "Cooldown finished. Click to reload now.";
+            btn.style.borderColor = "var(--black)";
+            btn.style.boxShadow = "0 0 12px rgba(0,0,0,0.12)";
+          }
+        }
+      }
+
+      updateButton();
+
+      const interval = setInterval(function() {
+        seconds--;
+        if (secEl) secEl.textContent = Math.max(0, seconds);
+        updateButton();
+        if (seconds <= 0) {
+          clearInterval(interval);
+        }
+      }, 1000);
+    })();
+  </script>
+</body>
+</html>

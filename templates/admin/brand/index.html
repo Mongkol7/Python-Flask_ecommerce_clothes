@@ -1,0 +1,251 @@
+{% extends 'admin/master.html' %}
+
+{% block page_header %}
+<div class="row align-items-center">
+  <div class="col-sm-6">
+    <span class="kicker-tag">Maison & Houses</span>
+    <h2 class="page-main-heading">Brand <em>Management</em></h2>
+  </div>
+  <div class="col-sm-6">
+    <ul class="breadcrumb-mk7 justify-content-sm-end mt-2 mt-sm-0">
+      <li><a href="{{ url_for('admin_bp.dashboard') }}">Admin</a></li>
+      <li class="breadcrumb-separator"><i class="bi bi-chevron-right"></i></li>
+      <li class="text-dark fw-semibold">Brands</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Search & Filter Bar -->
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="card-mk7 p-3">
+      <form method="GET" action="{{ url_for('admin_bp.brands') }}" class="row g-2 align-items-center">
+        <div class="col-md-9 col-sm-8">
+          <div class="input-group">
+            <span class="input-group-text bg-transparent border-end-0" style="border-color: var(--border);">
+              <i class="bi bi-search text-muted"></i>
+            </span>
+            <input type="text" name="search" class="form-control form-control-mk7 border-start-0"
+              placeholder="Search brand by name, website, or description..." value="{{ search_query }}">
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-4 d-flex gap-2">
+          <button type="submit" class="btn-pill-primary w-100 justify-content-center">
+            <i class="bi bi-funnel"></i> Filter
+          </button>
+          {% if search_query %}
+          <a href="{{ url_for('admin_bp.brands') }}" class="btn-pill-outline text-nowrap">
+            <i class="bi bi-x-circle"></i> Clear
+          </a>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="card-mk7">
+      <div class="card-mk7-header">
+        <div class="d-flex align-items-center gap-3">
+          <h3 class="card-mk7-title">Fashion <em>Houses & Labels</em></h3>
+          <span class="badge-mk7 badge-role-user">{{ brands|length }} Total</span>
+        </div>
+        <div>
+          <a href="{{ url_for('admin_bp.brand_add') }}" class="btn-pill-primary">
+            <i class="bi bi-plus-lg"></i>
+            <span>Add Brand</span>
+          </a>
+        </div>
+      </div>
+      <!-- /.card-header -->
+
+      <div class="table-responsive">
+        <table id="brands-table" class="table table-hover table-editorial align-middle mb-0">
+          <thead>
+            <tr>
+              <th style="width: 70px;">ID</th>
+              <th style="width: 80px;">Logo</th>
+              <th>Brand Name</th>
+              <th>Slug</th>
+              <th>Website</th>
+              <th style="width: 120px;">Products</th>
+              <th style="width: 150px;">Created At</th>
+              <th style="width: 170px;" class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for b in brands %}
+            <tr>
+              <td><span class="fw-bold text-dark">#{{ b.id }}</span></td>
+              <td>
+                {% if b.logo %}
+                <img src="{{ b.logo }}" alt="{{ b.name }}" class="table-avatar-img" style="border-radius: var(--radius-sm); object-fit: contain; background: #fff; border: 1px solid var(--border);">
+                {% else %}
+                <span class="table-avatar-placeholder" style="border-radius: var(--radius-sm); font-size: 11px;">No logo</span>
+                {% endif %}
+              </td>
+              <td>
+                <span class="fw-bold text-dark" style="font-size: 14.5px;">{{ b.name }}</span>
+              </td>
+              <td>
+                <span class="badge-mk7" style="background: rgba(0,0,0,0.05); color: var(--primary);">
+                  {{ b.slug }}
+                </span>
+              </td>
+              <td>
+                {% if b.website %}
+                <a href="{{ b.website }}" target="_blank" rel="noopener noreferrer" class="text-primary small text-decoration-none">
+                  <i class="bi bi-box-arrow-up-right me-1"></i> Visit
+                </a>
+                {% else %}
+                <span class="text-secondary small">—</span>
+                {% endif %}
+              </td>
+              <td>
+                <span class="badge-mk7 badge-role-admin">
+                  <i class="bi bi-box-seam me-1"></i> {{ b.products|length }}
+                </span>
+              </td>
+              <td>
+                <span class="text-secondary small">{{ b.created_at.strftime('%Y-%m-%d') if b.created_at else '—' }}</span>
+              </td>
+              <td class="text-end">
+                <div class="d-inline-flex gap-2">
+                  <a href="{{ url_for('admin_bp.brand_edit', brand_id=b.id) }}" class="btn-action-edit" title="Edit brand">
+                    <i class="bi bi-pencil-square"></i> Edit
+                  </a>
+                  <button type="button" class="btn-action-delete btn-delete-brand"
+                    data-brand-id="{{ b.id }}"
+                    data-brand-name="{{ b.name }}"
+                    data-brand-logo="{{ b.logo or '' }}"
+                    data-brand-prods="{{ b.products|length }}"
+                    title="Delete brand">
+                    <i class="bi bi-trash3"></i> Delete
+                  </button>
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="8" class="text-center py-5 text-muted">
+                <i class="bi bi-award fs-1 d-block mb-2 text-muted"></i>
+                No brands registered. Click <strong>Add Brand</strong> to register your first fashion label.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteBrandModal" tabindex="-1" aria-labelledby="deleteBrandModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content modal-content-mk7">
+      <div class="modal-header modal-header-mk7">
+        <h5 class="modal-title fw-bold" id="deleteBrandModalLabel">
+          <i class="bi bi-exclamation-circle text-danger me-2"></i>Confirm Deletion
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body modal-body-mk7 text-center">
+        <div class="mb-3">
+          <img id="deleteBrandLogo" src="" alt="Brand Logo" class="rounded shadow-sm p-2 bg-white" width="80" height="80" style="object-fit: contain;">
+          <span id="deleteBrandNoLogo" class="table-avatar-placeholder d-none mx-auto" style="width: 80px; height: 80px; font-size: 13px;">No logo</span>
+        </div>
+        <h5 class="fw-bold mb-2">Delete brand <span id="deleteBrandName" class="text-dark"></span>?</h5>
+        <div id="deleteBrandWarning" class="alert alert-warning small d-none py-2 px-3 mt-2 text-start">
+          <i class="bi bi-exclamation-triangle-fill me-1"></i>
+          This brand currently contains <strong id="deleteBrandProdsCount">0</strong> products. Deleting it will unlink products from this brand.
+        </div>
+        <p class="text-muted small mb-0 mt-2">This action cannot be undone.</p>
+      </div>
+      <div class="modal-footer modal-footer-mk7 d-flex justify-content-between">
+        <button type="button" class="btn-pill-danger" id="confirmDeleteBrandBtn">
+          <i class="bi bi-trash3"></i> Delete Brand
+        </button>
+        <button type="button" class="btn-pill-outline" data-bs-dismiss="modal">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Axios CDN -->
+<script src="https://cdn.jsdelivr.net/npm/axios@1.7.9/dist/axios.min.js"></script>
+
+<script>
+  axios.defaults.headers.common['X-CSRFToken'] = '{{ csrf_token() }}';
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteBrandModal'));
+    const deleteBrandNameEl = document.getElementById('deleteBrandName');
+    const deleteBrandLogoEl = document.getElementById('deleteBrandLogo');
+    const deleteBrandNoLogoEl = document.getElementById('deleteBrandNoLogo');
+    const deleteBrandWarningEl = document.getElementById('deleteBrandWarning');
+    const deleteBrandProdsCountEl = document.getElementById('deleteBrandProdsCount');
+    const confirmDeleteBtn = document.getElementById('confirmDeleteBrandBtn');
+    let currentBrandId = null;
+
+    document.querySelectorAll('.btn-delete-brand').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        currentBrandId = this.getAttribute('data-brand-id');
+        const brandName = this.getAttribute('data-brand-name');
+        const brandLogo = this.getAttribute('data-brand-logo');
+        const brandProds = parseInt(this.getAttribute('data-brand-prods') || '0');
+
+        deleteBrandNameEl.textContent = brandName;
+
+        if (brandLogo) {
+          deleteBrandLogoEl.src = brandLogo;
+          deleteBrandLogoEl.classList.remove('d-none');
+          deleteBrandNoLogoEl.classList.add('d-none');
+        } else {
+          deleteBrandLogoEl.classList.add('d-none');
+          deleteBrandNoLogoEl.classList.remove('d-none');
+        }
+
+        if (brandProds > 0) {
+          deleteBrandProdsCountEl.textContent = brandProds;
+          deleteBrandWarningEl.classList.remove('d-none');
+        } else {
+          deleteBrandWarningEl.classList.add('d-none');
+        }
+
+        deleteModal.show();
+      });
+    });
+
+    confirmDeleteBtn.addEventListener('click', function () {
+      if (!currentBrandId) return;
+
+      confirmDeleteBtn.disabled = true;
+      confirmDeleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Deleting...';
+
+      axios.post('/admin/brands/delete/' + currentBrandId)
+        .then(function (response) {
+          const deletedRow = document.querySelector('.btn-delete-brand[data-brand-id="' + currentBrandId + '"]');
+          if (deletedRow) {
+            deletedRow.closest('tr').remove();
+          }
+          deleteModal.hide();
+        })
+        .catch(function (error) {
+          alert('Failed to delete brand: ' + (error.response?.data?.message || 'Please try again.'));
+        })
+        .finally(function () {
+          confirmDeleteBtn.disabled = false;
+          confirmDeleteBtn.innerHTML = '<i class="bi bi-trash3"></i> Delete Brand';
+          currentBrandId = null;
+        });
+    });
+  });
+</script>
+{% endblock %}

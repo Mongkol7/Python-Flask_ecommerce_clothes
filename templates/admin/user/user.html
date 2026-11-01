@@ -1,0 +1,202 @@
+{% extends 'admin/master.html' %}
+
+{% block page_header %}
+<div class="row align-items-center">
+  <div class="col-sm-6">
+    <span class="kicker-tag">Directory & Accounts</span>
+    <h2 class="page-main-heading">User <em>Management</em></h2>
+  </div>
+  <div class="col-sm-6">
+    <ul class="breadcrumb-mk7 justify-content-sm-end mt-2 mt-sm-0">
+      <li><a href="{{ url_for('admin_bp.dashboard') }}">Admin</a></li>
+      <li class="breadcrumb-separator"><i class="bi bi-chevron-right"></i></li>
+      <li class="text-dark fw-semibold">Users</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-12">
+    <div class="card-mk7">
+      <div class="card-mk7-header">
+        <div class="d-flex align-items-center gap-3">
+          <h3 class="card-mk7-title">Registered <em>Accounts</em></h3>
+          <span class="badge-mk7 badge-role-user">{{ users|length }} Users</span>
+        </div>
+        <div>
+          <a href="{{ url_for('admin_bp.user_add') }}" class="btn-pill-primary">
+            <i class="bi bi-person-plus-fill"></i>
+            <span>Add User</span>
+          </a>
+        </div>
+      </div>
+      <!-- /.card-header -->
+
+      <div class="table-responsive">
+        <table id="users-table" class="table table-hover table-editorial align-middle mb-0">
+          <thead>
+            <tr>
+              <th style="width: 70px;">ID</th>
+              <th style="width: 80px;">Profile</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Created At</th>
+              <th style="width: 180px;" class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Loop through users -->
+            {% for user in users %}
+            <tr>
+              <td><span class="fw-bold text-dark">#{{ user.id }}</span></td>
+              <td>
+                {% if user.profile %}
+                <img src="{{ user.profile | profile_url(user.id, 'thum') }}" alt="Profile" class="table-avatar-img">
+                {% else %}
+                <span class="table-avatar-placeholder">No img</span>
+                {% endif %}
+              </td>
+              <td><span class="fw-bold text-dark" style="font-size: 14.5px;">{{ user.username }}</span></td>
+              <td><span class="text-secondary fw-medium" style="font-size: 13.5px;">{{ user.email }}</span></td>
+              <td>
+                {% if user.role == 'admin' %}
+                <span class="badge-mk7 badge-role-admin">
+                  <i class="bi bi-shield-check"></i> Admin
+                </span>
+                {% else %}
+                <span class="badge-mk7 badge-role-user">User</span>
+                {% endif %}
+              </td>
+              <td>
+                <span class="badge-mk7 badge-status-active">
+                  <i class="bi bi-circle-fill" style="font-size: 6px;"></i> Active
+                </span>
+              </td>
+              <td><span class="text-secondary small">{{ user.created_at or '—' }}</span></td>
+              <td class="text-end">
+                <div class="d-inline-flex gap-2">
+                  <a href="{{ url_for('admin_bp.user_edit', user_id=user.id) }}" class="btn-action-edit" title="Edit account">
+                    <i class="bi bi-pencil-square"></i> Edit
+                  </a>
+                  <button type="button" class="btn-action-delete btn-delete" data-user-id="{{ user.id }}"
+                    data-user-name="{{ user.username }}" data-user-profile="{{ user.profile | profile_url(user.id, 'thum') if user.profile else '' }}" title="Delete account">
+                    <i class="bi bi-trash3"></i> Delete
+                  </button>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <!-- /.table-responsive -->
+    </div>
+    <!-- /.card-mk7 -->
+  </div>
+  <!-- /.col -->
+</div>
+<!-- /.row -->
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content modal-content-mk7">
+      <div class="modal-header modal-header-mk7">
+        <h5 class="modal-title fw-bold" id="deleteModalLabel">
+          <i class="bi bi-exclamation-circle text-danger me-2"></i>Confirm Deletion
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body modal-body-mk7 text-center">
+        <div class="mb-3">
+          <img id="deleteUserProfile" src="" alt="Profile" class="rounded-circle border shadow-sm" width="84"
+            height="84" style="object-fit: cover;">
+          <span id="deleteUserNoImg" class="table-avatar-placeholder d-none mx-auto" style="width: 84px; height: 84px; font-size: 13px;">No img</span>
+        </div>
+        <h5 class="fw-bold mb-2">Delete user <span id="deleteUserName" class="text-dark"></span>?</h5>
+        <p class="text-muted small mb-0">This operation will permanently remove this account from the database. This action cannot be undone.</p>
+      </div>
+      <div class="modal-footer modal-footer-mk7 d-flex justify-content-between">
+        <!-- Delete button on the LEFT, Cancel on the RIGHT -->
+        <button type="button" class="btn-pill-danger" id="confirmDeleteBtn">
+          <i class="bi bi-trash3"></i> Delete User
+        </button>
+        <button type="button" class="btn-pill-outline" data-bs-dismiss="modal">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Axios CDN -->
+<script src="https://cdn.jsdelivr.net/npm/axios@1.7.9/dist/axios.min.js"></script>
+
+<script>
+  // Set default CSRF header for Axios requests
+  axios.defaults.headers.common['X-CSRFToken'] = '{{ csrf_token() }}';
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    const deleteUserNameEl = document.getElementById('deleteUserName');
+    const deleteUserProfileEl = document.getElementById('deleteUserProfile');
+    const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+    let currentUserId = null;
+
+    // Attach click listeners to all delete buttons
+    document.querySelectorAll('.btn-delete').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        currentUserId = this.getAttribute('data-user-id');
+        const userName = this.getAttribute('data-user-name');
+        const userProfile = this.getAttribute('data-user-profile');
+        deleteUserNameEl.textContent = userName;
+        const deleteUserNoImgEl = document.getElementById('deleteUserNoImg');
+        if (userProfile) {
+          deleteUserProfileEl.src = userProfile;
+          deleteUserProfileEl.classList.remove('d-none');
+          if (deleteUserNoImgEl) deleteUserNoImgEl.classList.add('d-none');
+        } else {
+          deleteUserProfileEl.classList.add('d-none');
+          if (deleteUserNoImgEl) deleteUserNoImgEl.classList.remove('d-none');
+        }
+        // Show the delete confirmation modal form:
+        deleteModal.show();
+      });
+    });
+
+    // Handle confirm delete
+    confirmDeleteBtn.addEventListener('click', function () {
+      if (!currentUserId) return;
+
+      // Disable button and show loading state
+      confirmDeleteBtn.disabled = true;
+      confirmDeleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Deleting...';
+
+      axios.post('/admin/users/delete/' + currentUserId)
+        .then(function (response) {
+          // Remove the user's table row from the DOM
+          const deletedRow = document.querySelector('.btn-delete[data-user-id="' + currentUserId + '"]');
+          if (deletedRow) {
+            deletedRow.closest('tr').remove();
+          }
+          //close modal pop up:
+          deleteModal.hide();
+        })
+        // catch error:
+        .catch(function (error) {
+          alert('Failed to delete user. Please try again.');
+        })
+        // finally: 
+        .finally(function () {
+          confirmDeleteBtn.disabled = false;
+          confirmDeleteBtn.innerHTML = '<i class="bi bi-trash3"></i> Delete User';
+          currentUserId = null;
+        });
+    });
+  });
+</script>
+{% endblock %}

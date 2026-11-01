@@ -3,3 +3,8 @@ __pycache__/
 *.py[cod]
 .env
 .idea/
+instance/
+*.sqlite3
+*.sqlite
+*.db
+.DS_Store

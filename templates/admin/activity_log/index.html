@@ -1,0 +1,640 @@
+{% extends 'admin/master.html' %}
+
+{% block page_header %}
+<div class="row align-items-center">
+  <div class="col-sm-6">
+    <span class="kicker-tag">Security & System Auditing</span>
+    <h2 class="page-main-heading">Audit Activity <em>Logs</em></h2>
+  </div>
+  <div class="col-sm-6">
+    <ul class="breadcrumb-mk7 justify-content-sm-end mt-2 mt-sm-0">
+      <li><a href="{{ url_for('admin_bp.dashboard') }}">Admin</a></li>
+      <li class="breadcrumb-separator"><i class="bi bi-chevron-right"></i></li>
+      <li class="text-dark fw-semibold">Activity Logs</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-12">
+    <div class="card-mk7">
+      <!-- Card Header with Filters (matches sample screenshot) -->
+      <div class="card-mk7-header d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div class="d-flex align-items-center gap-3">
+          <h3 class="card-mk7-title mb-0">System Activity <em>Audit Trail</em></h3>
+          <span class="badge-mk7 badge-role-user">{{ logs|length }} Entries</span>
+        </div>
+
+        <!-- Filter Form -->
+        <form method="GET" action="{{ url_for('admin_bp.activity_logs') }}" class="d-flex flex-wrap align-items-center gap-2">
+          <!-- Module Filter Dropdown -->
+          <div class="input-group-sm">
+            <select name="module" class="form-select form-select-sm rounded-pill px-3 py-1" onchange="this.form.submit()" style="font-size: 13px; min-width: 140px;">
+              <option value="">All Modules</option>
+              {% for mod in available_modules %}
+              <option value="{{ mod }}" {{ 'selected' if selected_module == mod else '' }}>{{ mod }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Action Filter Dropdown -->
+          <div class="input-group-sm">
+            <select name="action" class="form-select form-select-sm rounded-pill px-3 py-1" onchange="this.form.submit()" style="font-size: 13px; min-width: 140px;">
+              <option value="">All Actions</option>
+              {% for act in available_actions %}
+              <option value="{{ act }}" {{ 'selected' if selected_action == act else '' }}>{{ act }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Search Input Box -->
+          <div class="position-relative">
+            <input type="text" name="search" value="{{ search_query }}" placeholder="Search description, user, IP..."
+              class="form-control form-control-sm rounded-pill ps-3 pe-4 py-1" style="font-size: 13px; width: 220px;">
+            <button type="submit" class="btn btn-link btn-sm position-absolute top-50 end-0 translate-middle-y text-muted pe-2 border-0 bg-transparent">
+              <i class="bi bi-search"></i>
+            </button>
+          </div>
+
+          {% if selected_module or selected_action or search_query %}
+          <a href="{{ url_for('admin_bp.activity_logs') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3" title="Clear Filters" style="font-size: 12px;">
+            <i class="bi bi-x-circle"></i> Clear
+          </a>
+          {% endif %}
+        </form>
+      </div>
+
+      <!-- Table Section -->
+      <div class="table-responsive">
+        <table id="activity-table" class="table table-hover table-editorial align-middle mb-0">
+          <thead>
+            <tr>
+              <th style="width: 40px;" class="text-center">
+                <input type="checkbox" class="form-check-input" id="checkAllLogs">
+              </th>
+              <th style="width: 175px;">Timestamp (PP Cambodia)</th>
+              <th style="width: 140px;">User</th>
+              <th style="width: 130px;">Action</th>
+              <th style="width: 110px;">Module</th>
+              <th style="width: 90px;">Record ID</th>
+              <th>Description</th>
+              <th style="width: 110px;" class="text-end pe-4">Details</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if logs %}
+            {% for item in logs %}
+            <tr>
+              <td class="text-center">
+                <input type="checkbox" class="form-check-input log-check" value="{{ item.id }}">
+              </td>
+              <td>
+                <span class="text-secondary font-monospace" style="font-size: 12.5px;">
+                  <i class="bi bi-clock me-1 text-muted"></i>{{ item.created_at.strftime('%Y-%m-%d %H:%M:%S') if item.created_at else '—' }}
+                </span>
+              </td>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <span class="badge rounded-circle bg-light text-dark p-2" style="width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">
+                    <i class="bi bi-person-fill"></i>
+                  </span>
+                  <span class="fw-semibold text-dark" style="font-size: 13.5px;">{{ item.username }}</span>
+                </div>
+              </td>
+              <td>
+                {% if item.action == 'USER_RATE_LIMIT' %}
+                <span class="badge px-2 py-1 rounded-pill" style="background-color: #f3e8ff; color: #7e22ce; font-size: 11px; font-weight: 600;">
+                  <i class="bi bi-person-x-fill me-1"></i> USER RATE LIMIT
+                </span>
+                {% elif item.action == 'IP_RATE_LIMIT' or item.action == 'RATE_LIMIT' %}
+                <span class="badge px-2 py-1 rounded-pill" style="background-color: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 600;">
+                  <i class="bi bi-shield-slash-fill me-1"></i> IP RATE LIMIT
+                </span>
+                {% elif item.action == '500_INTERNAL_ERROR' or item.action == '500_ERROR' %}
+                <span class="badge px-2 py-1 rounded-pill" style="background-color: #ffe4e6; color: #be123c; font-size: 11px; font-weight: 600;">
+                  <i class="bi bi-fire me-1"></i> 500 ERROR
+                </span>
+                {% else %}
+                <span class="badge bg-secondary px-2 py-1 rounded-pill" style="font-size: 11px;">{{ item.action }}</span>
+                {% endif %}
+              </td>
+              <td>
+                <span class="badge bg-light text-dark border px-2 py-1 rounded" style="font-size: 12px; font-weight: 500;">
+                  {{ item.module }}
+                </span>
+              </td>
+              <td>
+                <span class="text-muted font-monospace small">
+                  {{ ('#' ~ item.record_id) if item.record_id else '—' }}
+                </span>
+              </td>
+              <td>
+                <span class="text-dark fw-normal" style="font-size: 13.5px;">{{ item.description or '—' }}</span>
+                {% if item.ip_address %}
+                <span class="d-block text-muted small font-monospace mt-1">IP: {{ item.ip_address }}</span>
+                {% endif %}
+              </td>
+              <td class="text-end pe-4">
+                <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 py-1 shadow-sm btn-view-log"
+                  data-log-id="{{ item.id }}"
+                  data-log-action="{{ item.action }}"
+                  data-log-module="{{ item.module }}"
+                  data-log-user="{{ item.username }}"
+                  data-log-uid="{{ item.user_id or '' }}"
+                  data-log-time="{{ item.created_at.strftime('%Y-%m-%d %H:%M:%S') if item.created_at else '' }}"
+                  data-log-ip="{{ item.ip_address or 'N/A' }}"
+                  data-log-record="{{ item.record_id or 'N/A' }}"
+                  data-log-agent="{{ item.user_agent or 'N/A' }}"
+                  data-log-desc="{{ item.description or '' }}"
+                  data-log-old="{{ item.old_data or '' }}"
+                  data-log-new="{{ item.new_data or '' }}"
+                  style="font-size: 12px;">
+                  <i class="bi bi-eye-fill me-1"></i> Details
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+            {% else %}
+            <tr>
+              <td colspan="8" class="text-center py-5">
+                <div class="text-muted">
+                  <i class="bi bi-shield-check" style="font-size: 42px; color: #cbd5e1;"></i>
+                  <p class="mt-2 mb-0 fw-medium">No activity log entries found matching current criteria.</p>
+                </div>
+              </td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card-footer bg-white border-0 py-3 d-flex justify-content-between align-items-center text-muted small">
+        <span>Showing <strong>{{ logs|length }}</strong> most recent audit events</span>
+        <span>Audit Trail Engine Active &bull; Timezone: Asia/Phnom_Penh (UTC+7)</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* Pixel-perfect custom modal close button (prevents Bootstrap .modal-header .btn-close negative margins and low opacity) */
+.btn-modal-close {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: rgba(255, 255, 255, 0.16) !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  border-radius: 50% !important;
+  color: #ffffff !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  outline: none !important;
+  box-shadow: none !important;
+  flex-shrink: 0 !important;
+  line-height: 1 !important;
+}
+
+.btn-modal-close:hover {
+  background: rgba(255, 255, 255, 0.35) !important;
+  border-color: rgba(255, 255, 255, 0.6) !important;
+  color: #ffffff !important;
+  transform: scale(1.08) !important;
+}
+
+.btn-modal-close:active {
+  transform: scale(0.92) !important;
+  background: rgba(255, 255, 255, 0.45) !important;
+}
+
+.btn-modal-close i {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  color: #ffffff !important;
+  pointer-events: none !important;
+}
+</style>
+
+<!-- =======================================================
+     Audit Log Entry Details Modal (Redesigned for Rate Limits & 500 Errors)
+     ======================================================= -->
+<div class="modal fade" id="logDetailsModal" tabindex="-1" aria-labelledby="logDetailsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
+      
+      <!-- Dynamic Modal Header (Changes gradient according to incident type) -->
+      <div id="modalHeaderEl" class="modal-header border-bottom py-3 px-4 d-flex align-items-center justify-content-between" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: #ffffff;">
+        <div class="d-flex align-items-center gap-2">
+          <i id="modalHeaderIcon" class="bi bi-shield-exclamation text-warning" style="font-size: 22px;"></i>
+          <div>
+            <h5 class="modal-title fw-bold mb-0 text-white" id="modalEntryTitle">Audit Log Entry Details #283</h5>
+            <span id="modalHeaderSubtitle" class="small opacity-75 font-monospace">Security & Rate Limit Incident Telemetry</span>
+          </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <span id="modalStatusBadge" class="badge rounded-pill px-3 py-1 bg-danger">HTTP 429</span>
+          <button type="button" 
+                  id="modalCloseHeaderBtn" 
+                  class="btn-modal-close" 
+                  data-bs-dismiss="modal" 
+                  aria-label="Close" 
+                  title="Close modal (Esc)">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="modal-body p-4" style="background-color: #f8fafc;">
+        
+        <!-- Incident Hero Card -->
+        <div id="modalHeroBanner" class="p-3 mb-4 rounded-4 border d-flex flex-wrap align-items-center justify-content-between gap-3 bg-white shadow-sm"
+             style="border-left: 5px solid #b91c1c !important;">
+          <div class="d-flex align-items-center gap-3">
+            <div id="modalHeroIconWrap" class="rounded-circle d-flex align-items-center justify-content-center"
+                 style="width: 52px; height: 52px; background-color: #fee2e2; color: #b91c1c; font-size: 22px; flex-shrink: 0;">
+              <i id="modalHeroIcon" class="bi bi-shield-slash-fill"></i>
+            </div>
+            <div>
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <span id="modalActionBadge" class="badge px-3 py-1 rounded-pill" style="background-color: #fee2e2; color: #b91c1c; font-size: 11.5px; font-weight: 700;">IP_RATE_LIMIT</span>
+                <span id="modalModuleBadge" class="badge bg-light text-dark border px-2 py-1 font-monospace" style="font-size: 11px;">IpRateLimit</span>
+              </div>
+              <h5 id="modalHeroHeading" class="fw-bold mb-0 text-dark" style="font-size: 16px;">Rate Limit Incident Detected</h5>
+              <p id="modalDescription" class="text-muted small mb-0 mt-1">Incident description</p>
+            </div>
+          </div>
+          <div class="d-flex flex-column align-items-md-end text-md-end">
+            <span class="text-muted small">Incident Timestamp</span>
+            <span id="modalTimestamp" class="font-monospace fw-semibold text-dark" style="font-size: 14px;">2026-10-05 19:05:42</span>
+            <span class="text-secondary small opacity-75">Phnom Penh, Cambodia (UTC+7)</span>
+          </div>
+        </div>
+
+        <!-- 4 Key Telemetry Cards -->
+        <div class="row g-3 mb-4">
+          <!-- Card 1: Target Identity -->
+          <div class="col-lg-3 col-sm-6">
+            <div class="card border shadow-sm rounded-4 p-3 bg-white h-100">
+              <span class="text-muted small text-uppercase fw-semibold" style="font-size: 11px; letter-spacing: 0.5px;">
+                <i class="bi bi-person-badge text-primary me-1"></i> Target Identity
+              </span>
+              <div class="mt-2">
+                <div id="modalUserDisplay" class="fw-bold text-dark font-monospace" style="font-size: 14px;">admin</div>
+                <div id="modalUserSubtext" class="text-muted small">User ID: 1 &bull; Role: admin</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2: Restriction & Policy -->
+          <div class="col-lg-3 col-sm-6">
+            <div class="card border shadow-sm rounded-4 p-3 bg-white h-100">
+              <span class="text-muted small text-uppercase fw-semibold" style="font-size: 11px; letter-spacing: 0.5px;">
+                <i class="bi bi-speedometer2 text-warning me-1"></i> Policy & Cooldown
+              </span>
+              <div class="mt-2">
+                <div id="modalPolicyBadge" class="badge bg-warning text-dark font-monospace mb-1">10 req / min (User)</div>
+                <div id="modalCooldownText" class="text-muted small">Cooldown: ~60 seconds</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 3: Network IP -->
+          <div class="col-lg-3 col-sm-6">
+            <div class="card border shadow-sm rounded-4 p-3 bg-white h-100">
+              <span class="text-muted small text-uppercase fw-semibold" style="font-size: 11px; letter-spacing: 0.5px;">
+                <i class="bi bi-globe text-info me-1"></i> Device Client IP
+              </span>
+              <div class="mt-2">
+                <code id="modalIp" class="fw-bold font-monospace text-dark d-block" style="font-size: 13.5px;">127.0.0.1</code>
+                <span class="text-muted small">Local / Public Address</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 4: Request Route & Method -->
+          <div class="col-lg-3 col-sm-6">
+            <div class="card border shadow-sm rounded-4 p-3 bg-white h-100">
+              <span class="text-muted small text-uppercase fw-semibold" style="font-size: 11px; letter-spacing: 0.5px;">
+                <i class="bi bi-signpost-split text-success me-1"></i> Route & Method
+              </span>
+              <div class="mt-2">
+                <span id="modalMethodBadge" class="badge bg-secondary mb-1">GET</span>
+                <code id="modalPathText" class="text-dark small d-block font-monospace text-truncate">/admin/dashboard</code>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- User Agent Bar -->
+        <div class="card border shadow-sm rounded-4 p-3 mb-4 bg-white">
+          <div class="d-flex align-items-center justify-content-between mb-1">
+            <span class="text-muted small text-uppercase fw-semibold" style="font-size: 11px; letter-spacing: 0.5px;">
+              <i class="bi bi-display text-secondary me-1"></i> Client User-Agent
+            </span>
+            <button type="button" class="btn btn-sm btn-link text-muted p-0 copy-json-btn" data-target="modalUserAgent" title="Copy User Agent">
+              <i class="bi bi-clipboard me-1"></i>Copy
+            </button>
+          </div>
+          <code id="modalUserAgent" class="text-secondary small d-block p-2 rounded bg-light border text-break font-monospace" style="font-size: 12px;">
+            Mozilla/5.0 ...
+          </code>
+        </div>
+
+        <!-- JSON Diff / Data Comparison Cards -->
+        <div class="row g-3" id="jsonContainerRow">
+          <!-- Left Column: Old Data (Hidden when empty) -->
+          <div class="col-md-6" id="oldDataCol">
+            <div class="card h-100 border shadow-sm rounded-4 overflow-hidden">
+              <div class="card-header py-2 px-3 border-bottom d-flex align-items-center justify-content-between" style="background-color: #f1f5f9;">
+                <span class="fw-semibold text-dark small">
+                  <i class="bi bi-clock-history me-1 text-secondary"></i> Old State (Before Change)
+                </span>
+                <button type="button" class="btn btn-sm btn-link text-muted p-0 copy-json-btn" data-target="modalOldData" title="Copy JSON">
+                  <i class="bi bi-clipboard me-1"></i>Copy
+                </button>
+              </div>
+              <div class="card-body p-0">
+                <pre id="modalOldData" class="m-0 p-3 bg-dark text-light font-monospace small" style="min-height: 220px; max-height: 400px; overflow: auto; border-radius: 0; font-size: 12px;"></pre>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: Error Incident JSON Payload (Expands to full width col-12 when oldData is empty) -->
+          <div class="col-md-6" id="newDataCol">
+            <div class="card h-100 border shadow-sm rounded-4 overflow-hidden">
+              <div class="card-header py-2 px-3 border-bottom d-flex align-items-center justify-content-between" style="background-color: #f1f5f9;">
+                <span class="fw-semibold text-dark small" id="newDataHeaderTitle">
+                  <i class="bi bi-braces-asterisk me-1 text-danger"></i> Incident Payload Details (JSON)
+                </span>
+                <button type="button" class="btn btn-sm btn-link text-muted p-0 copy-json-btn" data-target="modalNewData" title="Copy JSON">
+                  <i class="bi bi-clipboard me-1"></i>Copy JSON
+                </button>
+              </div>
+              <div class="card-body p-0">
+                <pre id="modalNewData" class="m-0 p-3 bg-dark text-light font-monospace small" style="min-height: 220px; max-height: 400px; overflow: auto; border-radius: 0; font-size: 12.5px;"></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="modal-footer border-top py-2 px-4 bg-white d-flex justify-content-between">
+        <span class="text-muted small">
+          <i class="bi bi-shield-check text-success me-1"></i> Audit Trail Telemetry &bull; Timezone: Asia/Phnom_Penh (UTC+7)
+        </span>
+        <button type="button" id="modalCloseFooterBtn" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const modalEl = document.getElementById("logDetailsModal");
+  const modal = new bootstrap.Modal(modalEl);
+
+  // Check all checkboxes
+  const checkAll = document.getElementById("checkAllLogs");
+  const itemChecks = document.querySelectorAll(".log-check");
+  if (checkAll) {
+    checkAll.addEventListener("change", function () {
+      itemChecks.forEach(ch => ch.checked = checkAll.checked);
+    });
+  }
+
+  // Format JSON string helper
+  function prettyJson(str) {
+    if (!str || str.trim() === "" || str.trim() === "null") {
+      return "// No additional data recorded";
+    }
+    try {
+      const parsed = JSON.parse(str);
+      return JSON.stringify(parsed, null, 2);
+    } catch (e) {
+      return str;
+    }
+  }
+
+  // Click handler on Details buttons
+  document.querySelectorAll(".btn-view-log").forEach(btn => {
+    btn.addEventListener("click", function () {
+      const logId = this.dataset.logId;
+      const action = this.dataset.logAction;
+      const module = this.dataset.logModule;
+      const user = this.dataset.logUser;
+      const uid = this.dataset.logUid;
+      const time = this.dataset.logTime;
+      const ip = this.dataset.logIp;
+      const record = this.dataset.logRecord;
+      const agent = this.dataset.logAgent;
+      const desc = this.dataset.logDesc;
+      const oldData = this.dataset.logOld;
+      const newData = this.dataset.logNew;
+
+      let parsed = {};
+      try {
+        if (newData && newData.trim()) {
+          parsed = JSON.parse(newData);
+        }
+      } catch (err) {}
+
+      // Common basic metadata
+      document.getElementById("modalEntryTitle").textContent = `Audit Log Entry Details #${logId}`;
+      document.getElementById("modalTimestamp").textContent = time;
+      document.getElementById("modalIp").textContent = ip || "127.0.0.1";
+      document.getElementById("modalDescription").textContent = desc || "—";
+      document.getElementById("modalUserAgent").textContent = agent || "—";
+      document.getElementById("modalModuleBadge").textContent = module || "RateLimit";
+      document.getElementById("modalActionBadge").textContent = action;
+
+      // Extract Route and Method
+      const method = parsed.method || (desc.includes("POST") ? "POST" : "GET");
+      const path = parsed.path || (desc.includes("/admin/dashboard") ? "/admin/dashboard" : (desc.includes("/login") ? "/login" : (desc.includes("/test500") ? "/test500" : "/")));
+      document.getElementById("modalMethodBadge").textContent = method;
+      document.getElementById("modalMethodBadge").className = method === "POST" ? "badge bg-primary mb-1" : "badge bg-info text-dark mb-1";
+      document.getElementById("modalPathText").textContent = path;
+
+      // Header, Status Badge & Hero Styling according to incident type
+      const headerEl = document.getElementById("modalHeaderEl");
+      const headerIcon = document.getElementById("modalHeaderIcon");
+      const headerSub = document.getElementById("modalHeaderSubtitle");
+      const statusBadge = document.getElementById("modalStatusBadge");
+      const heroBanner = document.getElementById("modalHeroBanner");
+      const heroIconWrap = document.getElementById("modalHeroIconWrap");
+      const heroIcon = document.getElementById("modalHeroIcon");
+      const heroHeading = document.getElementById("modalHeroHeading");
+      const actionBadge = document.getElementById("modalActionBadge");
+
+      const userDisplay = document.getElementById("modalUserDisplay");
+      const userSubtext = document.getElementById("modalUserSubtext");
+      const policyBadge = document.getElementById("modalPolicyBadge");
+      const cooldownText = document.getElementById("modalCooldownText");
+
+      if (action === "USER_RATE_LIMIT") {
+        // --- 1. USER ID RATE LIMIT BAN (Purple Theme) ---
+        headerEl.style.background = "linear-gradient(135deg, #581c87 0%, #3b0764 100%)";
+        headerIcon.className = "bi bi-person-x-fill text-warning";
+        headerSub.textContent = "Account-Level Rate Limit Incident (Keyed by User ID)";
+        statusBadge.textContent = "HTTP 429";
+        statusBadge.className = "badge rounded-pill px-3 py-1 bg-warning text-dark fw-bold";
+
+        heroBanner.style.borderLeft = "5px solid #9333ea";
+        heroIconWrap.style.backgroundColor = "#f3e8ff";
+        heroIconWrap.style.color = "#7e22ce";
+        heroIcon.className = "bi bi-person-slash";
+        heroHeading.textContent = "User Action Rate Limit Throttled";
+
+        actionBadge.style.backgroundColor = "#f3e8ff";
+        actionBadge.style.color = "#7e22ce";
+
+        const resolvedUser = parsed.username || user || "admin";
+        const resolvedUid = parsed.user_id || uid || "1";
+        const resolvedRole = parsed.role || "admin";
+        userDisplay.textContent = resolvedUser;
+        userSubtext.innerHTML = `User ID: <strong>#${resolvedUid}</strong> &bull; Role: <span class="badge bg-dark">${resolvedRole}</span>`;
+
+        policyBadge.textContent = "10 requests / min (User ID)";
+        policyBadge.className = "badge bg-purple text-white mb-1";
+        policyBadge.style.backgroundColor = "#9333ea";
+        cooldownText.textContent = `Cooldown: ~${parsed.retry_after || 60} seconds`;
+
+      } else if (action === "IP_RATE_LIMIT" || action === "RATE_LIMIT") {
+        // --- 2. IP ADDRESS RATE LIMIT BAN (Crimson Theme) ---
+        headerEl.style.background = "linear-gradient(135deg, #881337 0%, #4c0519 100%)";
+        headerIcon.className = "bi bi-shield-slash-fill text-danger";
+        headerSub.textContent = "Network-Level Rate Limit Incident (Keyed by IP Address)";
+        statusBadge.textContent = "HTTP 429";
+        statusBadge.className = "badge rounded-pill px-3 py-1 bg-danger text-white fw-bold";
+
+        heroBanner.style.borderLeft = "5px solid #e11d48";
+        heroIconWrap.style.backgroundColor = "#ffe4e6";
+        heroIconWrap.style.color = "#e11d48";
+        heroIcon.className = "bi bi-globe-americas";
+        heroHeading.textContent = "Network IP Rate Limit Enforced";
+
+        actionBadge.style.backgroundColor = "#fee2e2";
+        actionBadge.style.color = "#b91c1c";
+
+        userDisplay.textContent = ip;
+        userSubtext.innerHTML = `<span class="badge bg-secondary">Unauthenticated / Anonymous Guest</span>`;
+
+        policyBadge.textContent = "5 failed attempts / min (IP)";
+        policyBadge.className = "badge bg-danger text-white mb-1";
+        cooldownText.textContent = `Cooldown: ~${parsed.retry_after || 60} seconds`;
+
+      } else if (action === "500_INTERNAL_ERROR" || action === "500_ERROR") {
+        // --- 3. HTTP 500 SERVER ERROR (Flame Red Theme) ---
+        headerEl.style.background = "linear-gradient(135deg, #7f1d1d 0%, #450a0a 100%)";
+        headerIcon.className = "bi bi-fire text-danger";
+        headerSub.textContent = "Internal Server Exception & Crash Telemetry";
+        statusBadge.textContent = "HTTP 500";
+        statusBadge.className = "badge rounded-pill px-3 py-1 bg-danger text-white fw-bold";
+
+        heroBanner.style.borderLeft = "5px solid #dc2626";
+        heroIconWrap.style.backgroundColor = "#fee2e2";
+        heroIconWrap.style.color = "#dc2626";
+        heroIcon.className = "bi bi-fire";
+        heroHeading.textContent = `Server Crash: ${parsed.error_type || "ZeroDivisionError"}`;
+
+        actionBadge.style.backgroundColor = "#fee2e2";
+        actionBadge.style.color = "#991b1b";
+
+        userDisplay.textContent = user || (parsed.user_id ? `User #${parsed.user_id}` : "Anonymous");
+        userSubtext.innerHTML = `Status: <span class="badge bg-danger">Critical Exception</span>`;
+
+        policyBadge.textContent = parsed.error_type || "Internal Server Error";
+        policyBadge.className = "badge bg-danger text-white mb-1";
+        cooldownText.textContent = "Immediate Dispatch to Telegram";
+
+      } else {
+        // Fallback generic styling
+        headerEl.style.background = "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)";
+        headerIcon.className = "bi bi-journal-code text-info";
+        headerSub.textContent = "System Activity Record";
+        statusBadge.textContent = "AUDIT";
+        statusBadge.className = "badge rounded-pill px-3 py-1 bg-secondary text-white";
+
+        heroBanner.style.borderLeft = "5px solid #64748b";
+        heroIconWrap.style.backgroundColor = "#f1f5f9";
+        heroIconWrap.style.color = "#475569";
+        heroIcon.className = "bi bi-activity";
+        heroHeading.textContent = action;
+
+        actionBadge.style.backgroundColor = "#e2e8f0";
+        actionBadge.style.color = "#334155";
+
+        userDisplay.textContent = user || "System";
+        userSubtext.textContent = uid ? `User ID: #${uid}` : "General Event";
+
+        policyBadge.textContent = "Standard Log";
+        policyBadge.className = "badge bg-secondary mb-1";
+        cooldownText.textContent = "Recorded in DB";
+      }
+
+      // JSON viewer layout: if oldData is empty, expand newData to full-width col-12
+      const oldCol = document.getElementById("oldDataCol");
+      const newCol = document.getElementById("newDataCol");
+      const hasOldData = oldData && oldData.trim() !== "" && oldData.trim() !== "null" && oldData.trim() !== "{}";
+
+      if (hasOldData) {
+        oldCol.style.display = "block";
+        oldCol.className = "col-md-6";
+        newCol.className = "col-md-6";
+        document.getElementById("modalOldData").textContent = prettyJson(oldData);
+      } else {
+        oldCol.style.display = "none";
+        newCol.className = "col-12";
+      }
+      document.getElementById("modalNewData").textContent = prettyJson(newData);
+
+      modal.show();
+    });
+  });
+
+  // Explicit close handlers for both header and footer buttons
+  const closeHeaderBtn = document.getElementById("modalCloseHeaderBtn");
+  if (closeHeaderBtn) {
+    closeHeaderBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+      modal.hide();
+    });
+  }
+
+  const closeFooterBtn = document.getElementById("modalCloseFooterBtn");
+  if (closeFooterBtn) {
+    closeFooterBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+      modal.hide();
+    });
+  }
+
+  // Copy JSON button handler
+  document.querySelectorAll(".copy-json-btn").forEach(btn => {
+    btn.addEventListener("click", function () {
+      const targetId = this.dataset.target;
+      const text = document.getElementById(targetId).textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const originalHtml = this.innerHTML;
+        this.innerHTML = '<i class="bi bi-check-lg text-success me-1"></i>Copied!';
+        setTimeout(() => {
+          this.innerHTML = originalHtml;
+        }, 1500);
+      });
+    });
+  });
+});
+</script>
+{% endblock %}

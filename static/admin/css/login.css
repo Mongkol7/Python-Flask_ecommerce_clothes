@@ -1,0 +1,300 @@
+/* Admin Login Page Style - Matches MK7 Storefront Home Aesthetic */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+
+:root {
+  --black: #0a0a0a;
+  --off-white: #f7f6f3;
+  --muted: #8a8a8a;
+  --border: rgba(0, 0, 0, 0.08);
+  --sand: #e8e6e0;
+  --radius-pill: 100px;
+  --radius-card: 22px;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
+body.login-page {
+  font-family: 'DM Sans', sans-serif;
+  background: radial-gradient(circle at 50% 20%, #fbfaf8 0%, #f0ede6 60%, #e5e1d8 100%);
+  color: var(--black);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Subtle background decorative shapes - constrained so they never cause scroll overflow */
+body.login-page::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 360px;
+  height: 360px;
+  border-radius: 50%;
+  background: rgba(220, 215, 204, 0.35);
+  filter: blur(80px);
+  z-index: 0;
+  pointer-events: none;
+}
+
+body.login-page::after {
+  content: "";
+  position: absolute;
+  top: 40%;
+  left: 0;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  background: rgba(210, 205, 192, 0.3);
+  filter: blur(75px);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.login-box {
+  width: 440px;
+  max-width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+/* Header & Brand Logo */
+.login-logo {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.login-logo a {
+  font-family: 'Playfair Display', serif;
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: -0.4px;
+  color: var(--black);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  transition: opacity 0.2s ease;
+}
+
+.login-logo a:hover {
+  opacity: 0.85;
+}
+
+.login-logo em {
+  font-style: italic;
+  font-family: 'Playfair Display', serif;
+  font-weight: 400;
+}
+
+.login-logo .brand-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--black);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.login-kicker {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+  margin-bottom: 6px;
+  text-align: center;
+}
+
+/* Glassmorphic Login Card */
+.login-card {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(28px) saturate(1.8);
+  -webkit-backdrop-filter: blur(28px) saturate(1.8);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  border-radius: var(--radius-card);
+  box-shadow: 0 16px 40px rgba(10, 10, 10, 0.06), 0 2px 6px rgba(0, 0, 0, 0.03);
+  padding: 36px 32px;
+}
+
+.login-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--black);
+  margin-bottom: 6px;
+  text-align: center;
+}
+
+.login-subtitle {
+  font-size: 13.5px;
+  color: var(--muted);
+  text-align: center;
+  margin-bottom: 28px;
+  letter-spacing: 0.1px;
+}
+
+/* Form Inputs */
+.form-floating > .form-control {
+  background: rgba(247, 246, 243, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px 0 0 12px;
+  font-size: 14px;
+  color: var(--black);
+  height: 54px;
+  transition: all 0.2s ease;
+}
+
+.form-floating > .form-control:focus {
+  background: #ffffff;
+  border-color: var(--black);
+  box-shadow: 0 0 0 3px rgba(10, 10, 10, 0.08);
+}
+
+.form-floating > label {
+  font-size: 13px;
+  color: var(--muted);
+  padding-left: 16px;
+}
+
+.form-floating > .form-control:focus ~ label {
+  color: var(--black);
+  font-weight: 500;
+}
+
+.input-group-addon {
+  background: rgba(247, 246, 243, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-left: none;
+  border-radius: 0 12px 12px 0;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  transition: all 0.2s ease;
+}
+
+.input-group:focus-within .input-group-addon {
+  background: #ffffff;
+  border-color: var(--black);
+  color: var(--black);
+}
+
+.btn-toggle-password {
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--muted);
+  transition: color 0.2s ease;
+}
+
+.btn-toggle-password:hover {
+  color: var(--black);
+}
+
+/* Remember Me Checkbox */
+.form-check-input {
+  cursor: pointer;
+  border-color: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.form-check-input:checked {
+  background-color: var(--black);
+  border-color: var(--black);
+}
+
+.form-check-input:focus {
+  box-shadow: 0 0 0 3px rgba(10, 10, 10, 0.1);
+}
+
+.form-check-label {
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Primary Submit Button (Matches .btn-explore / storefront buttons) */
+.btn-login {
+  background: var(--black);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-pill);
+  height: 48px;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.25s ease;
+  width: 100%;
+  box-shadow: 0 4px 14px rgba(10, 10, 10, 0.12);
+}
+
+.btn-login:hover {
+  background: #262626;
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(10, 10, 10, 0.2);
+}
+
+.btn-login:active {
+  transform: translateY(0);
+}
+
+/* Bottom Footer Links */
+.login-footer-links {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.login-footer-links a {
+  color: var(--muted);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.2s ease;
+}
+
+.login-footer-links a:hover {
+  color: var(--black);
+}
+
+/* Storefront Footer on Login Page */
+.footer {
+  background: var(--black, #0a0a0a) !important;
+  color: white;
+  width: 100%;
+  position: relative;
+  z-index: 2;
+  margin-top: auto;
+  margin-bottom: 0;
+}
+
+/* Accessibility Skip Links Reset */
+.skip-links,
+.skip-link {
+  display: none !important;
+}

@@ -1,0 +1,297 @@
+{% extends 'admin/master.html' %}
+
+{% block page_header %}
+<div class="row align-items-center">
+  <div class="col-sm-6">
+    <span class="kicker-tag">Sales & Fulfillment</span>
+    <h2 class="page-main-heading">Add User's <em>Order</em></h2>
+  </div>
+  <div class="col-sm-6">
+    <ul class="breadcrumb-mk7 justify-content-sm-end mt-2 mt-sm-0">
+      <li><a href="{{ url_for('admin_bp.dashboard') }}">Admin</a></li>
+      <li class="breadcrumb-separator"><i class="bi bi-chevron-right"></i></li>
+      <li><a href="{{ url_for('admin_bp.orders') }}">Orders</a></li>
+      <li class="breadcrumb-separator"><i class="bi bi-chevron-right"></i></li>
+      <li class="text-dark fw-semibold">Add</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-10 col-xl-9">
+    <div class="card-mk7">
+      <div class="card-mk7-header">
+        <div>
+          <span class="kicker-tag">Customer Order Entry</span>
+          <h3 class="card-mk7-title">New Order & <em>Stock Deduction</em></h3>
+        </div>
+      </div>
+
+      <div class="card-mk7-body">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category_msg, message in messages %}
+              <div class="alert alert-{{ 'danger' if category_msg == 'error' else category_msg }} alert-dismissible fade show mb-4" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <form id="addOrderForm" method="POST" action="{{ url_for('admin_bp.order_add') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          <!-- Customer Selection / Auto-fill -->
+          <div class="row g-3 mb-4 p-3 rounded" style="background: #faf8f5; border: 1px solid var(--border);">
+            <div class="col-12">
+              <label for="selectUser" class="form-label fw-bold small text-uppercase" style="letter-spacing: 0.08em; color: var(--muted);">
+                Select Existing User (Optional Auto-fill)
+              </label>
+              <select class="form-select form-select-mk7" id="selectUser" name="user_id">
+                <option value="">-- Guest / Manual Customer Entry --</option>
+                {% for u in users %}
+                <option value="{{ u.id }}" data-username="{{ u.username }}" data-email="{{ u.email }}">
+                  #{{ u.id }} - {{ u.username }} ({{ u.email }}) [{{ u.role|upper }}]
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label for="custName" class="form-label fw-bold small text-uppercase" style="letter-spacing: 0.08em; color: var(--muted);">
+                Customer Full Name *
+              </label>
+              <input type="text" class="form-control form-control-mk7" id="custName" name="customer_name"
+                placeholder="e.g. Eleanor Vance" required>
+            </div>
+            <div class="col-md-6">
+              <label for="custEmail" class="form-label fw-bold small text-uppercase" style="letter-spacing: 0.08em; color: var(--muted);">
+                Customer Email *
+              </label>
+              <input type="email" class="form-control form-control-mk7" id="custEmail" name="customer_email"
+                placeholder="eleanor@example.com" required>
+            </div>
+            <div class="col-md-6">
+              <label for="custPhone" class="form-label fw-bold small text-uppercase" style="letter-spacing: 0.08em; color: var(--muted);">
+                Phone Number
+              </label>
+              <input type="tel" class="form-control form-control-mk7" id="custPhone" name="customer_phone"
+                placeholder="+855 12 345 678">
+            </div>
+            <div class="col-md-6">
+              <label for="paymentMethod" class="form-label fw-bold small text-uppercase" style="letter-spacing: 0.08em; color: var(--muted);">
+                Payment Method
+              </label>
+              <select class="form-select form-select-mk7" id="paymentMethod" name="payment_method">
+                <option value="qr_payment" selected>QR Code Payment (Bakong / KHQR)</option>
+                <option value="credit_card">Credit / Debit Card</option>
+                <option value="cod">Cash on Delivery (COD)</option>
+                <option value="bank_transfer">Bank Wire Transfer</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Shipping Address -->
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label for="shipAddress" class="form-label fw-bold small text-uppercase" style="letter-spacing: 0.08em; color: var(--muted);">
+                Shipping Address
+              </label>
+              <input type="text" class="form-control form-control-mk7" id="shipAddress" name="shipping_address"
+                placeholder="St. 214, BKK1, Khan Chamkarmon">
+            </div>
+            <div class="col-md-3">
+              <label for="shipCity" class="form-label fw-bold small text-uppercase" style="letter-spacing: 0.08em; color: var(--muted);">
+                City
+              </label>
+              <input type="text" class="form-control form-control-mk7" id="shipCity" name="city"
+                placeholder="Phnom Penh" value="Phnom Penh">
+            </div>
+            <div class="col-md-3">
+              <label for="shipZip" class="form-label fw-bold small text-uppercase" style="letter-spacing: 0.08em; color: var(--muted);">
+                Zip Code
+              </label>
+              <input type="text" class="form-control form-control-mk7" id="shipZip" name="zip_code"
+                placeholder="12000" value="12000">
+            </div>
+          </div>
+
+          <!-- Status -->
+          <div class="mb-4">
+            <label for="orderStatus" class="form-label fw-bold small text-uppercase" style="letter-spacing: 0.08em; color: var(--muted);">
+              Initial Order Status
+            </label>
+            <select class="form-select form-select-mk7" id="orderStatus" name="status">
+              <option value="confirmed" selected>Confirmed (Deducts Stock Immediately)</option>
+              <option value="processing">Processing (Deducts Stock Immediately)</option>
+              <option value="pending">Pending Review (Deducts Stock Immediately)</option>
+              <option value="shipped">Shipped (Deducts Stock Immediately)</option>
+              <option value="delivered">Delivered (Deducts Stock Immediately)</option>
+              <option value="cancelled">Cancelled (No Stock Deduction)</option>
+            </select>
+          </div>
+
+          <hr class="my-4" style="border-color: var(--border);">
+
+          <!-- Order Line Items Builder -->
+          <div class="d-flex align-items-center justify-content-between mb-3">
+            <div>
+              <span class="kicker-tag">Purchased Products</span>
+              <h5 class="fw-bold mb-0">Order Line Items & Live Stock</h5>
+            </div>
+            <button type="button" class="btn-pill-outline" id="addItemBtn">
+              <i class="bi bi-plus-circle me-1"></i> Add Product Item
+            </button>
+          </div>
+
+          <div id="itemsContainer" class="d-flex flex-column gap-3 mb-4">
+            <!-- First line item row -->
+            <div class="item-row p-3 rounded border" style="background: #faf8f5; border-color: var(--border) !important;">
+              <div class="row g-2 align-items-center">
+                <div class="col-md-6">
+                  <label class="form-label small fw-bold text-muted mb-1">Select Product</label>
+                  <select name="product_id[]" class="form-select form-select-mk7 product-selector" required>
+                    <option value="">-- Choose Product --</option>
+                    {% for p in products %}
+                    <option value="{{ p.id }}" data-price="{{ p.price }}" data-stock="{{ p.stock }}">
+                      #{{ p.id }} {{ p.title }} — {{ p.price|khr_format }} ({{ p.price|usd_format }}) ({{ p.stock }} in stock)
+                    </option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label small fw-bold text-muted mb-1">Quantity</label>
+                  <input type="number" name="quantity[]" class="form-control form-control-mk7 quantity-input" min="1" value="1" required>
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label small fw-bold text-muted mb-1">Line Total</label>
+                  <div class="line-subtotal fw-bold text-dark pt-2">0 ៛</div>
+                </div>
+                <div class="col-md-2 text-end pt-3">
+                  <button type="button" class="btn btn-sm btn-outline-danger btn-remove-row" title="Remove Item">
+                    <i class="bi bi-trash3"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Total Summary Card -->
+          <div class="p-3 rounded mb-4 text-end" style="background: rgba(0,0,0,0.03); border: 1px solid var(--border);">
+            <span class="text-secondary small text-uppercase fw-bold letter-spacing-1 me-3">Estimated Total:</span>
+            <span class="fs-4 fw-bold text-primary" id="orderTotalDisplay">0 ៛</span>
+          </div>
+
+          <!-- Notes -->
+          <div class="mb-4">
+            <label for="orderNotes" class="form-label fw-bold small text-uppercase" style="letter-spacing: 0.08em; color: var(--muted);">
+              Internal / Delivery Notes
+            </label>
+            <textarea class="form-control form-control-mk7" id="orderNotes" name="notes" rows="2"
+              placeholder="e.g. VIP Client phone order, call upon arrival at front desk..."></textarea>
+          </div>
+
+          <hr class="my-4" style="border-color: var(--border);">
+
+          <!-- Buttons -->
+          <div class="d-flex align-items-center justify-content-between">
+            <a href="{{ url_for('admin_bp.orders') }}" class="btn-pill-outline">
+              <i class="bi bi-arrow-left"></i> Back to Orders
+            </a>
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn-pill-primary">
+                <i class="bi bi-check2"></i> Create Order & Deduct Stock
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const userSelect = document.getElementById('selectUser');
+    const custName = document.getElementById('custName');
+    const custEmail = document.getElementById('custEmail');
+    const itemsContainer = document.getElementById('itemsContainer');
+    const addItemBtn = document.getElementById('addItemBtn');
+    const orderTotalDisplay = document.getElementById('orderTotalDisplay');
+
+    // Auto-fill customer info if a registered user is selected
+    userSelect.addEventListener('change', function () {
+      const selected = userSelect.options[userSelect.selectedIndex];
+      if (selected.value) {
+        custName.value = selected.getAttribute('data-username') || '';
+        custEmail.value = selected.getAttribute('data-email') || '';
+      }
+    });
+
+    // Calculate line subtotals and grand total
+    function calculateTotals() {
+      let grandTotal = 0;
+      document.querySelectorAll('.item-row').forEach(row => {
+        const prodSelect = row.querySelector('.product-selector');
+        const qtyInput = row.querySelector('.quantity-input');
+        const subtotalEl = row.querySelector('.line-subtotal');
+
+        const opt = prodSelect.options[prodSelect.selectedIndex];
+        const price = parseFloat(opt?.getAttribute('data-price') || '0');
+        const stock = parseInt(opt?.getAttribute('data-stock') || '999');
+        let qty = parseInt(qtyInput.value || '1');
+
+        if (opt.value && qty > stock && stock > 0) {
+          qtyInput.max = stock;
+        }
+
+        const lineTotal = price * (qty > 0 ? qty : 1);
+        subtotalEl.innerHTML = `${Math.round(lineTotal).toLocaleString()} ៛ <small class="text-muted fw-normal d-block">≈ $${(lineTotal / 4000).toFixed(2)}</small>`;
+        if (opt.value) {
+          grandTotal += lineTotal;
+        }
+      });
+      orderTotalDisplay.innerHTML = `${Math.round(grandTotal).toLocaleString()} ៛ <small class="text-muted fw-normal ms-2 fs-6">≈ $${(grandTotal / 4000).toFixed(2)}</small>`;
+    }
+
+    // Attach row events
+    function wireRowEvents(row) {
+      const prodSelect = row.querySelector('.product-selector');
+      const qtyInput = row.querySelector('.quantity-input');
+      const removeBtn = row.querySelector('.btn-remove-row');
+
+      prodSelect.addEventListener('change', calculateTotals);
+      qtyInput.addEventListener('input', calculateTotals);
+      removeBtn.addEventListener('click', function () {
+        if (document.querySelectorAll('.item-row').length > 1) {
+          row.remove();
+          calculateTotals();
+        } else {
+          alert('An order must have at least one product item.');
+        }
+      });
+    }
+
+    // Wire first row
+    document.querySelectorAll('.item-row').forEach(wireRowEvents);
+
+    // Add new product item row
+    addItemBtn.addEventListener('click', function () {
+      const firstRow = document.querySelector('.item-row');
+      const clone = firstRow.cloneNode(true);
+      clone.querySelector('.product-selector').selectedIndex = 0;
+      clone.querySelector('.quantity-input').value = 1;
+      clone.querySelector('.line-subtotal').innerHTML = '0 ៛';
+      itemsContainer.appendChild(clone);
+      wireRowEvents(clone);
+    });
+
+    calculateTotals();
+  });
+</script>
+{% endblock %}
