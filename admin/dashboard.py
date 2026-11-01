@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from flask import render_template
 from sqlalchemy import func
+from config import Config
 from extensions import db, limiter
 from helpers import login_required, admin_user_id_key
 from models import User, Product, Category, Brand, Order, OrderItem, ActivityLog
