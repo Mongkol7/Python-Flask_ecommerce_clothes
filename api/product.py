@@ -319,6 +319,12 @@ def get_all_products_list():
             return [p.to_dict() for p in db_prods]
     except Exception:
         pass
+
+    # Ensure thumbnail field is always present in static fallback
+    for p in static_products:
+        if "thumbnail" not in p and "image" in p:
+            parts = p["image"].rsplit("/", 1)
+            p["thumbnail"] = f"{parts[0]}/thum_{parts[1]}"
     return static_products
 
 

@@ -59,7 +59,7 @@
                     {% for product in cart_items %}
                     <div class="d-flex align-items-center justify-content-between gap-3 {% if not loop.last %}border-bottom pb-3 mb-3{% endif %}">
                         <div class="d-flex align-items-center gap-3">
-                            <img class="summary-image" src="{{ product.image }}" alt="{{ product.title }}">
+                            <img class="summary-image" src="{{ product.thumbnail or product.image }}" alt="{{ product.title }}">
                             <div>
                                 <div class="product-name summary-product-name">{{ product.title }}</div>
                                 <div class="product-sub">{{ product.category }} x {{ product.qty }}</div>
@@ -158,7 +158,7 @@
                         {% for product in cart_items %}
                         <div class="d-flex align-items-center justify-content-between gap-3 {% if not loop.last %}border-bottom pb-3 mb-3{% endif %}">
                             <div class="d-flex align-items-center gap-3">
-                                <img class="summary-image" src="{{ product.image }}" alt="{{ product.title }}">
+                                <img class="summary-image" src="{{ product.thumbnail or product.image }}" alt="{{ product.title }}">
                                 <div>
                                     <div class="product-name summary-product-name">{{ product.title }}</div>
                                     <div class="product-sub">{{ product.category }} x {{ product.qty }}</div>

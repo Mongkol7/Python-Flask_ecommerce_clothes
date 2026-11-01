@@ -6,7 +6,7 @@ from models.product import Product
 from models.category import Category
 from models.brand import Brand
 from helpers import login_required, admin_user_id_key, log_activity
-from upload_service import save_uploaded_image
+from upload_service import save_uploaded_image, save_product_image
 from . import admin_bp
 
 
@@ -94,28 +94,28 @@ def product_add():
         image_path = "/static/image/product/Man_Brown01.jpg"
 
         if main_image_file and main_image_file.filename:
-            saved_filename = save_uploaded_image(
+            saved_prod = save_product_image(
                 main_image_file,
                 upload_folder=Config.UPLOAD_PRODUCT_FOLDER,
                 allowed_extensions=Config.ALLOWED_EXTENSIONS,
                 prefix="prod",
             )
-            if saved_filename:
-                image_path = f"/static/image/product/{saved_filename}"
+            if saved_prod:
+                image_path = saved_prod["original_url"]
 
-        # Sub images
+        # Sub images (save both high-res and thumbnails)
         sub_images = []
         for key in ["sub_image_1", "sub_image_2"]:
             sub_file = request.files.get(key)
             if sub_file and sub_file.filename:
-                saved_sub = save_uploaded_image(
+                saved_sub = save_product_image(
                     sub_file,
                     upload_folder=Config.UPLOAD_PRODUCT_FOLDER,
                     allowed_extensions=Config.ALLOWED_EXTENSIONS,
                     prefix="sub",
                 )
                 if saved_sub:
-                    sub_images.append(f"/static/image/product/{saved_sub}")
+                    sub_images.append(saved_sub["original_url"])
 
         cat_id_int = int(category_id) if category_id and category_id.isdigit() else None
         brand_id_int = int(brand_id) if brand_id and brand_id.isdigit() else None
@@ -199,31 +199,31 @@ def product_edit(product_id):
         p.gender = gender
         p.is_featured = is_featured
 
-        # Main image upload
+        # Main image upload (saves high-res + thumbnail)
         main_image_file = request.files.get("image")
         if main_image_file and main_image_file.filename:
-            saved_filename = save_uploaded_image(
+            saved_prod = save_product_image(
                 main_image_file,
                 upload_folder=Config.UPLOAD_PRODUCT_FOLDER,
                 allowed_extensions=Config.ALLOWED_EXTENSIONS,
                 prefix="prod",
             )
-            if saved_filename:
-                p.image = f"/static/image/product/{saved_filename}"
+            if saved_prod:
+                p.image = saved_prod["original_url"]
 
-        # Additional sub images
+        # Additional sub images (saves high-res + thumbnail)
         new_subs = p.get_sub_images()
         for idx, key in enumerate(["sub_image_1", "sub_image_2"]):
             sub_file = request.files.get(key)
             if sub_file and sub_file.filename:
-                saved_sub = save_uploaded_image(
+                saved_sub = save_product_image(
                     sub_file,
                     upload_folder=Config.UPLOAD_PRODUCT_FOLDER,
                     allowed_extensions=Config.ALLOWED_EXTENSIONS,
                     prefix=f"sub{idx+1}",
                 )
                 if saved_sub:
-                    sub_url = f"/static/image/product/{saved_sub}"
+                    sub_url = saved_sub["original_url"]
                     if idx < len(new_subs):
                         new_subs[idx] = sub_url
                     else:

@@ -52,7 +52,7 @@ def sync_all(admin_password="123456"):
         print("[OK] Products updated successfully.")
 
         # 3. Sync Admin & User Accounts from Local DB
-        print("\n[2/2] Syncing Admin and User Accounts...")
+        print("\n[2/3] Syncing Admin and User Accounts...")
         accounts = [
             {"username": "admin", "email": "admin@gmail.com", "role": "admin", "profile": "Frog_standing.jpg"},
             {"username": "admin_test", "email": "admin_test@mk7.com", "role": "admin", "profile": "space17.jpg"},
@@ -82,6 +82,30 @@ def sync_all(admin_password="123456"):
 
         db.session.commit()
         print(f"[OK] All accounts synchronized. Default password for all: '{admin_password}'")
+
+        # 4. Generate low-quality / compressed thumbnails for all product images on disk
+        print("\n[3/3] Generating low-quality / compressed thumbnails for all product images...")
+        import os
+        from PIL import Image
+        from config import Config
+        product_folder = Config.UPLOAD_PRODUCT_FOLDER
+        thumb_count = 0
+        if os.path.exists(product_folder):
+            for fname in os.listdir(product_folder):
+                if fname.lower().endswith(('.jpg', '.jpeg', '.png', '.webp')) and not fname.startswith('thum_'):
+                    thum_path = os.path.join(product_folder, f"thum_{fname}")
+                    if not os.path.exists(thum_path):
+                        orig_path = os.path.join(product_folder, fname)
+                        try:
+                            with Image.open(orig_path) as img:
+                                if img.mode in ('RGBA', 'P'):
+                                    img = img.convert('RGB')
+                                img.thumbnail((450, 600), Image.Resampling.LANCZOS)
+                                img.save(thum_path, 'JPEG', quality=75, optimize=True)
+                                thumb_count += 1
+                        except Exception as e:
+                            print(f"  Warning on {fname}: {e}")
+        print(f"[OK] Generated {thumb_count} optimized thumbnails (450px, 75% quality).")
 
         print("\n=======================================================")
         print("SUCCESS: FULL DATABASE SYNC COMPLETE!")

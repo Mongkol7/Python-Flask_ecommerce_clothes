@@ -51,6 +51,25 @@ class Product(db.Model):
         self.gender = gender or "woman"
         self.created_at = created_at or get_cambodia_now()
 
+    @property
+    def thumbnail(self):
+        """Returns the low-quality / compressed thumbnail URL for listing cards, falling back to full image."""
+        if not self.image:
+            return "/static/image/product/Man_Brown01.jpg"
+
+        parts = self.image.rsplit("/", 1)
+        if len(parts) == 2:
+            filename = parts[1]
+            if filename.startswith("thum_"):
+                return self.image
+            thum_rel_path = f"{parts[0]}/thum_{filename}"
+            import os
+            from config import Config
+            disk_path = os.path.join(Config.UPLOAD_PRODUCT_FOLDER, f"thum_{filename}")
+            if os.path.exists(disk_path):
+                return thum_rel_path
+        return self.image
+
     def get_sub_images(self):
         if not self.sub_images:
             return []
@@ -94,6 +113,7 @@ class Product(db.Model):
             "brand": brand_name,
             "brand_id": self.brand_id,
             "image": self.image,
+            "thumbnail": self.thumbnail,
             "sub_images": subs,
             "images": all_imgs,
             "rating": {"rate": self.rating_rate, "count": self.rating_count},

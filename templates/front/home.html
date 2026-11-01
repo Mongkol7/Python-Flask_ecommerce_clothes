@@ -88,7 +88,7 @@
             <div class="col-6 col-lg-3">
                 <a class="product-card d-block" href="{{ url_for('front_bp.product_detail', product_id=product.id) }}">
                     <div class="product-img-wrap" data-images='{{ product.images|tojson }}'>
-                        <img class="product-card-image" src="{{ product.image }}" alt="{{ product.title }}">
+                        <img class="product-card-image" src="{{ product.thumbnail or product.image }}" alt="{{ product.title }}">
                         <button class="image-cycle image-cycle-left" type="button" aria-label="Previous image">&lsaquo;</button>
                         <button class="image-cycle image-cycle-right" type="button" aria-label="Next image">&rsaquo;</button>
                     </div>
