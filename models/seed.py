@@ -94,3 +94,52 @@ def seed_database():
         except Exception as e:
             db.session.rollback()
             print(f"Error seeding products: {e}")
+
+    # 4. Seed Users if User table is empty
+    try:
+        from models.users import User
+        if User.query.count() == 0:
+            default_users = [
+                User(
+                    username="admin",
+                    email="admin@gmail.com",
+                    password="scrypt:32768:8:1$MJ3Lh8H0pQBwDZjr$b64f74791ebb67c37479c062a2d46834120217ccba86e499c7b539511c7d266deb58bd66b229e2e9b69d693646a7344ce7243b3416108c04220969e2417658dc",
+                    profile="Frog_standing.jpg",
+                    role="admin"
+                ),
+                User(
+                    username="admin_test",
+                    email="admin_test@mk7.com",
+                    password="scrypt:32768:8:1$aJkCw2FIoZhTFFKP$e5c2d6dca4a8abfcf3533ec39a8baf187b3dc5ae9676e4c6b124135acb6a345ac60335e6a3f22727fb59c8629900fbffeed2836da15ceb8fbb5d5f74c0dac8cd",
+                    profile="space17.jpg",
+                    role="admin"
+                ),
+                User(
+                    username="mongkol009",
+                    email="mongkol009@gmail.com",
+                    password="scrypt:32768:8:1$qbSC5HfJLMZLbzYg$05ed10a4488a91940b4c37a0b4c1c3ec1a174564678b075d42dd487449c3066b05e235094389fd79fe7c21521a1121edb620a0213cca8f3e47d6642e1bcc6e7f",
+                    profile="002.jpg",
+                    role="user"
+                ),
+                User(
+                    username="Test",
+                    email="test@gmail.com",
+                    password="scrypt:32768:8:1$S83A7KcyCWWbIqeV$649520b0a6508d713b346de9df803287ccbaa8b089430098edbd4a5ed8a946aedccc038b1519681f62708a5d674adbe6dd7041dbefb9ffb762024ee81313433f",
+                    profile="FinalCutPro.png",
+                    role="user"
+                ),
+                User(
+                    username="admin02",
+                    email="admin02@gmail.com",
+                    password="scrypt:32768:8:1$Gq1A6LFwGUSrTjg1$af77aa0b31373d94be4f289017578e8605a522523ab3638640cdc4bf040d46ca5e3f70d62ff5f141d169adfd10e214409d7b84590a43f508ac6908b396cfaa4d",
+                    profile=None,
+                    role="admin"
+                ),
+            ]
+            for u in default_users:
+                db.session.add(u)
+            db.session.commit()
+            print("Successfully seeded initial users.")
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error seeding users: {e}")
