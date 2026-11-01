@@ -156,7 +156,7 @@ def user_register():
         portal_name="Account",
         subtitle="Join MK7 for exclusive collections, effortless bag checkout, and order tracking",
         btn_text="Create MK7 Account",
-        next=next_param,
+        next=(raw_next if raw_next and raw_next != "None" else ""),
     )
 
 
