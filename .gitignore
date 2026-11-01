@@ -8,3 +8,5 @@ instance/
 *.sqlite
 *.db
 .DS_Store
+DOCs/
+
