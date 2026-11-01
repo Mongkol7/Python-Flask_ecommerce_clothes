@@ -159,6 +159,22 @@
                         </span>
                     </div>
 
+                    <!-- Store Balance / Return Money Card -->
+                    <div class="p-3 mb-4 rounded-4 text-start shadow-sm" style="background: linear-gradient(135deg, #0a0a0a 0%, #1f1f1f 100%); color: #ffffff;">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small text-white-50" style="font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase; font-weight: 600;">Store Balance / Return Money</span>
+                            <i class="bi bi-wallet2 text-warning fs-5"></i>
+                        </div>
+                        <div class="fs-3 fw-bold text-white mb-0">${{ "%.2f"|format(user.balance or 0.0) }}</div>
+                        <div class="small text-white-50 mb-2" style="font-size: 12px;">{{ ((user.balance or 0.0) * 4000)|int }} ៛ KHR</div>
+                        <p class="small text-white-50 mb-3" style="font-size: 11px; line-height: 1.4;">
+                            Money returned from order cancellations. Automatically ready for your next checkout.
+                        </p>
+                        <a href="{{ url_for('front_bp.product_list') }}" class="btn btn-sm btn-light rounded-pill w-100 fw-semibold" style="font-size: 12px;">
+                            <i class="bi bi-bag-check me-1"></i> Shop With Balance
+                        </a>
+                    </div>
+
                     <hr class="my-4" style="border-color: rgba(0,0,0,0.06);">
 
                     <!-- Quick Navigation -->
@@ -183,9 +199,31 @@
                 </div>
             </div>
 
-            <!-- Right Column: Settings Form -->
+            <!-- Right Column: Notifications, Settings Form & Return Money Ledger -->
             <div class="col-lg-8">
-                <div class="profile-card">
+                <!-- Notifications Alert for Cancelled Orders / Refunds -->
+                {% if notifications %}
+                <div class="mb-4">
+                    {% for notif in notifications %}
+                    <div class="alert alert-warning border-0 rounded-4 shadow-sm p-3 mb-2 d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border: 1px solid #fde68a !important;">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-warning text-white p-2 d-flex align-items-center justify-content-center shadow-sm" style="width: 42px; height: 42px; min-width: 42px;">
+                                <i class="bi bi-wallet2 fs-5"></i>
+                            </div>
+                            <div>
+                                <strong class="text-dark d-block mb-1" style="font-size: 14.5px;">{{ notif.title }}</strong>
+                                <span class="text-secondary small">{{ notif.message }}</span>
+                            </div>
+                        </div>
+                        <a href="#wallet" class="btn btn-sm btn-dark rounded-pill px-3 fw-semibold text-nowrap ms-2">
+                            View Balance
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <div class="profile-card mb-4">
                     <form action="{{ url_for('front_bp.user_profile') }}" method="POST" enctype="multipart/form-data" id="profileForm">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
@@ -246,6 +284,81 @@
                             </button>
                         </div>
                     </form>
+                </div>
+
+                <!-- Store Balance / Return Money Ledger Card -->
+                <div class="profile-card" id="wallet">
+                    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                        <div>
+                            <p class="section-label mb-1">MK7 Store Credit</p>
+                            <h3 class="fs-4 fw-bold mb-0">Return Money <em>Ledger</em></h3>
+                        </div>
+                        <div class="text-end">
+                            <span class="fs-4 fw-bold text-dark">${{ "%.2f"|format(user.balance or 0.0) }}</span>
+                            <div class="small text-muted">{{ ((user.balance or 0.0) * 4000)|int }} ៛ KHR available</div>
+                        </div>
+                    </div>
+
+                    <div class="p-3 bg-light rounded-4 small text-muted mb-4 border d-flex gap-2 align-items-center">
+                        <i class="bi bi-info-circle text-primary fs-5"></i>
+                        <div>
+                            <strong>Return Money Policy:</strong> When you cancel an eligible order within 4 hours, your refund is credited 100% to this balance. When you check out new items, you can use your balance to pay, and if the balance is not enough, simply scan KHQR for the remaining amount!
+                        </div>
+                    </div>
+
+                    {% if wallet_transactions %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0" style="font-size: 13.5px;">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Type</th>
+                                    <th>Description</th>
+                                    <th class="text-end">Amount</th>
+                                    <th class="text-end">Balance After</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for tx in wallet_transactions %}
+                                <tr>
+                                    <td class="text-muted">{{ tx.created_at.strftime('%b %d, %Y %H:%M') if tx.created_at else '—' }}</td>
+                                    <td>
+                                        {% if tx.tx_type == 'refund_credit' %}
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1">
+                                            <i class="bi bi-arrow-down-left"></i> Refund Credit
+                                        </span>
+                                        {% elif tx.tx_type == 'order_payment' %}
+                                        <span class="badge bg-dark-subtle text-dark border border-dark-subtle rounded-pill px-2 py-1">
+                                            <i class="bi bi-bag-check"></i> Order Payment
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-1">{{ tx.tx_type }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="fw-medium text-dark">{{ tx.description or 'Store balance transaction' }}</span>
+                                        {% if tx.order_id %}
+                                        <span class="text-muted d-block small">Order ID #{{ tx.order_id }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end fw-bold {{ 'text-success' if tx.amount > 0 else 'text-danger' }}">
+                                        {{ '+' if tx.amount > 0 else '' }}${{ "%.2f"|format(tx.amount) }}
+                                    </td>
+                                    <td class="text-end fw-semibold text-secondary">
+                                        ${{ "%.2f"|format(tx.balance_after) }}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-receipt fs-2 d-block mb-2 text-secondary"></i>
+                        <p class="mb-0">No return money or store balance transactions yet.</p>
+                        <small>When you cancel an order within 4 hours, your refund will appear here.</small>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>

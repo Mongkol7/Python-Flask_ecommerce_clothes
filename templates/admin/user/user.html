@@ -24,6 +24,9 @@
         <div class="d-flex align-items-center gap-3">
           <h3 class="card-mk7-title">Registered <em>Accounts</em></h3>
           <span class="badge-mk7 badge-role-user">{{ users|length }} Users</span>
+          <span class="badge-mk7" style="background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0;">
+            <i class="bi bi-wallet2 me-1"></i> Total Return Balance: ${{ "%.2f"|format(total_return_balance) }}
+          </span>
         </div>
         <div>
           <a href="{{ url_for('admin_bp.user_add') }}" class="btn-pill-primary">
@@ -43,9 +46,10 @@
               <th>Name</th>
               <th>Email</th>
               <th>Role</th>
+              <th>Return Money / Balance</th>
               <th>Status</th>
               <th>Created At</th>
-              <th style="width: 180px;" class="text-end">Actions</th>
+              <th style="width: 250px;" class="text-end">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -72,6 +76,16 @@
                 {% endif %}
               </td>
               <td>
+                {% if user.balance and user.balance > 0 %}
+                <span class="badge-mk7" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; font-weight: 700;">
+                  <i class="bi bi-wallet2 me-1"></i> ${{ "%.2f"|format(user.balance) }}
+                </span>
+                <span class="text-muted d-block small" style="font-size: 11px;">{{ (user.balance * 4000)|int }} ៛</span>
+                {% else %}
+                <span class="text-muted small">$0.00</span>
+                {% endif %}
+              </td>
+              <td>
                 <span class="badge-mk7 badge-status-active">
                   <i class="bi bi-circle-fill" style="font-size: 6px;"></i> Active
                 </span>
@@ -79,6 +93,9 @@
               <td><span class="text-secondary small">{{ user.created_at or '—' }}</span></td>
               <td class="text-end">
                 <div class="d-inline-flex gap-2">
+                  <button type="button" class="btn-action-wallet btn-view-wallet" data-user-id="{{ user.id }}" data-user-name="{{ user.username }}" title="View Return Money History" style="border-radius: 100px; padding: 6px 12px; font-size: 12.5px; border: 1px solid rgba(0,0,0,0.12); background: #ffffff; color: #0a0a0a; font-weight: 500;">
+                    <i class="bi bi-wallet2 text-primary me-1"></i> Return Money
+                  </button>
                   <a href="{{ url_for('admin_bp.user_edit', user_id=user.id) }}" class="btn-action-edit" title="Edit account">
                     <i class="bi bi-pencil-square"></i> Edit
                   </a>
@@ -121,7 +138,6 @@
         <p class="text-muted small mb-0">This operation will permanently remove this account from the database. This action cannot be undone.</p>
       </div>
       <div class="modal-footer modal-footer-mk7 d-flex justify-content-between">
-        <!-- Delete button on the LEFT, Cancel on the RIGHT -->
         <button type="button" class="btn-pill-danger" id="confirmDeleteBtn">
           <i class="bi bi-trash3"></i> Delete User
         </button>
@@ -133,19 +149,128 @@
   </div>
 </div>
 
+<!-- Customer Return Money & Wallet Ledger Modal -->
+<div class="modal fade" id="walletModal" tabindex="-1" aria-labelledby="walletModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content modal-content-mk7 rounded-4 border-0 shadow-lg">
+      <div class="modal-header modal-header-mk7 border-bottom">
+        <div>
+          <h5 class="modal-title fw-bold mb-0" id="walletModalLabel">
+            <i class="bi bi-wallet2 text-warning me-2"></i>Customer Return Money &amp; Wallet
+          </h5>
+          <span class="text-muted small" id="walletUserSubtitle">Account Details</span>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body py-4">
+        <!-- Balance Highlights -->
+        <div class="p-3 mb-4 rounded-4 d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #0a0a0a 0%, #262626 100%); color: #fff;">
+          <div>
+            <span class="text-white-50 small text-uppercase" style="font-size: 11px; letter-spacing: 0.5px;">Current Available Return Balance</span>
+            <div class="fs-2 fw-bold text-white mb-0" id="walletModalBalance">$0.00</div>
+            <div class="small text-white-50" id="walletModalBalanceKHR">0 ៛ KHR</div>
+          </div>
+          <div class="text-end">
+            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2">
+              <i class="bi bi-check-circle-fill me-1"></i> Active Store Credit
+            </span>
+          </div>
+        </div>
+
+        <h6 class="fw-bold mb-3">Return Money &amp; Transaction History</h6>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle mb-0" style="font-size: 13px;">
+            <thead class="table-light">
+              <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Order #</th>
+                <th>Description</th>
+                <th class="text-end">Amount</th>
+                <th class="text-end">Balance After</th>
+              </tr>
+            </thead>
+            <tbody id="walletTxTableBody">
+              <tr>
+                <td colspan="6" class="text-center py-4 text-muted">
+                  <span class="spinner-border spinner-border-sm me-2"></span> Loading return money ledger...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-dark rounded-pill px-4" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Axios CDN -->
 <script src="https://cdn.jsdelivr.net/npm/axios@1.7.9/dist/axios.min.js"></script>
 
 <script>
-  // Set default CSRF header for Axios requests
   axios.defaults.headers.common['X-CSRFToken'] = '{{ csrf_token() }}';
 
   document.addEventListener('DOMContentLoaded', function () {
     const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    const walletModal = new bootstrap.Modal(document.getElementById('walletModal'));
     const deleteUserNameEl = document.getElementById('deleteUserName');
     const deleteUserProfileEl = document.getElementById('deleteUserProfile');
     const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
     let currentUserId = null;
+
+    // View Wallet / Return Money Click Handler
+    document.querySelectorAll('.btn-view-wallet').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const uid = this.getAttribute('data-user-id');
+        const uname = this.getAttribute('data-user-name');
+        document.getElementById('walletUserSubtitle').textContent = uname ? ('Customer: ' + uname + ' (ID #' + uid + ')') : '';
+        document.getElementById('walletModalBalance').textContent = 'Loading...';
+        document.getElementById('walletModalBalanceKHR').textContent = '';
+        const tbody = document.getElementById('walletTxTableBody');
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted"><span class="spinner-border spinner-border-sm me-2"></span> Loading transactions...</td></tr>';
+
+        walletModal.show();
+
+        axios.get('/admin/users/' + uid + '/wallet')
+          .then(function (res) {
+            const data = res.data;
+            if (data.success) {
+              document.getElementById('walletModalBalance').textContent = '$' + Number(data.balance).toFixed(2);
+              document.getElementById('walletModalBalanceKHR').textContent = Number(data.balance_khr).toLocaleString() + ' ៛ KHR';
+
+              if (data.transactions && data.transactions.length > 0) {
+                let html = '';
+                data.transactions.forEach(function (t) {
+                  const isPositive = Number(t.amount) > 0;
+                  const typeBadge = t.tx_type === 'refund_credit' 
+                    ? '<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1"><i class="bi bi-arrow-down-left"></i> Refund Credit</span>'
+                    : '<span class="badge bg-dark-subtle text-dark border border-dark-subtle rounded-pill px-2 py-1"><i class="bi bi-bag-check"></i> Order Spend</span>';
+                  
+                  html += '<tr>' +
+                    '<td class="text-muted">' + (t.created_at || '—') + '</td>' +
+                    '<td>' + typeBadge + '</td>' +
+                    '<td><code>' + (t.order_number || '—') + '</code></td>' +
+                    '<td>' + (t.description || 'Store balance activity') + '</td>' +
+                    '<td class="text-end fw-bold ' + (isPositive ? 'text-success' : 'text-danger') + '">' +
+                      (isPositive ? '+' : '') + '$' + Number(t.amount).toFixed(2) +
+                    '</td>' +
+                    '<td class="text-end fw-semibold text-secondary">$' + Number(t.balance_after).toFixed(2) + '</td>' +
+                  '</tr>';
+                });
+                tbody.innerHTML = html;
+              } else {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted"><i class="bi bi-receipt fs-4 d-block mb-1"></i>No return money transactions recorded yet.</td></tr>';
+              }
+            }
+          })
+          .catch(function (err) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-danger">Failed to load wallet data.</td></tr>';
+          });
+      });
+    });
 
     // Attach click listeners to all delete buttons
     document.querySelectorAll('.btn-delete').forEach(function (btn) {
@@ -163,7 +288,6 @@
           deleteUserProfileEl.classList.add('d-none');
           if (deleteUserNoImgEl) deleteUserNoImgEl.classList.remove('d-none');
         }
-        // Show the delete confirmation modal form:
         deleteModal.show();
       });
     });

@@ -59,6 +59,8 @@ def orders():
     total_orders = Order.query.count()
     pending_orders = Order.query.filter_by(status="pending").count()
     completed_orders = Order.query.filter(Order.status.in_(["delivered", "confirmed"])).count()
+    cancelled_orders = Order.query.filter_by(status="cancelled").count()
+    cancelled_loss = sum(o.total for o in Order.query.filter_by(status="cancelled").all())
     total_revenue = sum(o.total for o in Order.query.filter(Order.status != "cancelled").all())
 
     return render_template(
@@ -70,6 +72,8 @@ def orders():
         total_orders=total_orders,
         pending_orders=pending_orders,
         completed_orders=completed_orders,
+        cancelled_orders=cancelled_orders,
+        cancelled_loss=cancelled_loss,
         total_revenue=total_revenue,
     )
 

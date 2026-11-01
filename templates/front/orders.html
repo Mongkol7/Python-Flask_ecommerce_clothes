@@ -293,36 +293,36 @@
                     </div>
                 </div>
 
-                <!-- Pending Payment & Cancellation Action Bar -->
+                <!-- Paid & In 4-Hour Cancellation Action Bar -->
                 {% if order.status == 'pending' %}
                 <div class="cancel-window-alert">
                     <div class="d-flex align-items-center gap-3">
-                        <i class="bi bi-hourglass-split fs-4 text-warning"></i>
+                        <i class="bi bi-shield-check fs-4 text-success"></i>
                         <div>
                             <div class="fw-semibold text-dark mb-1">
-                                Awaiting Payment {% if item.can_cancel %}&bull; 4-Hour Cancellation Active{% endif %}
+                                Paid & Processing &bull; 4-Hour Cancellation Active
                             </div>
                             <div class="small text-muted">
                                 {% if item.can_cancel %}
-                                You can pay with Bakong KHQR, or cancel before the timer expires:
+                                Payment verified. You have a 4-hour window if you wish to cancel this order:
                                 <span class="cancel-timer-pill ms-2" id="timer-{{ order.id }}" data-remaining="{{ item.remaining_seconds }}">
                                     <i class="bi bi-stopwatch"></i>
                                     <span class="timer-text">{{ item.hours_left }}h {{ item.mins_left }}m left</span>
                                 </span>
                                 {% else %}
-                                <span>Please scan the Bakong KHQR code to finalize your order.</span>
+                                <span>Order is being prepared for shipment.</span>
                                 {% endif %}
                             </div>
                         </div>
                     </div>
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
-                        <button type="button" class="btn-pay-now-order btn-pay-trigger" data-order-id="{{ order.id }}" data-order-number="{{ order.order_number }}">
-                            <i class="bi bi-qr-code-scan me-1"></i> Pay Now (KHQR)
-                        </button>
+                    <div class="d-flex flex-column align-items-end gap-1">
                         {% if item.can_cancel %}
                         <button type="button" class="btn-cancel-order" data-bs-toggle="modal" data-bs-target="#cancelModal-{{ order.id }}">
                             <i class="bi bi-slash-circle me-1"></i> Cancel Order
                         </button>
+                        <div class="text-muted" style="font-size: 11px; max-width: 280px; text-align: right; line-height: 1.3;">
+                            <i class="bi bi-info-circle text-primary"></i> Refund returned 100% to your MK7 Store Balance (not bank).
+                        </div>
                         {% endif %}
                     </div>
                 </div>
@@ -339,12 +339,18 @@
                                 <p class="text-secondary mb-3">
                                     Are you sure you want to cancel this order?
                                 </p>
-                                <div class="p-3 bg-light rounded-3 small text-muted">
+                                <div class="p-3 bg-light rounded-3 small text-muted mb-3">
                                     <ul class="mb-0 ps-3">
-                                        <li>Your order status will be updated to <strong>Cancelled</strong>.</li>
-                                        <li>All reserved items ({{ order.items|length }} piece{% if order.items|length > 1 %}s{% endif %}) will be instantly returned to stock.</li>
-                                        <li>Any processing charges will be refunded.</li>
+                                        <li>Your order status will be marked as <strong>Cancelled</strong>.</li>
+                                        <li>All reserved items ({{ order.items|length }} piece{% if order.items|length > 1 %}s{% endif %}) will be immediately restocked.</li>
+                                        <li>The full order amount (<strong>{{ order.total|khr_format }} / {{ order.total|usd_format }}</strong>) will be credited to your MK7 Account Balance.</li>
                                     </ul>
+                                </div>
+                                <div class="alert alert-warning border-0 small mb-0 d-flex gap-2 align-items-start" style="background: #fffbeb; color: #92400e;">
+                                    <i class="bi bi-exclamation-triangle-fill fs-5 mt-n1"></i>
+                                    <div>
+                                        <strong>Important Notice:</strong> Money cannot be returned back to your bank account, but will be refunded 100% to your <strong>MK7 Store Balance</strong> so you can use it to purchase any other items on this website.
+                                    </div>
                                 </div>
                             </div>
                             <div class="modal-footer border-0 pt-0">
@@ -352,7 +358,7 @@
                                 <form action="{{ url_for('front_bp.cancel_order', order_id=order.id) }}" method="POST" style="margin: 0;">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn btn-danger rounded-pill px-4">
-                                        Yes, Cancel Order
+                                        Yes, Cancel & Refund to Balance
                                     </button>
                                 </form>
                             </div>

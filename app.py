@@ -421,6 +421,19 @@ import models
 with app.app_context():
     db.create_all()
     try:
+        from sqlalchemy import inspect, text
+        inspector = inspect(db.engine)
+        user_cols = [c["name"] for c in inspector.get_columns("user")]
+        if "balance" not in user_cols:
+            db.session.execute(text("ALTER TABLE user ADD COLUMN balance FLOAT DEFAULT 0.0"))
+            db.session.commit()
+        order_cols = [c["name"] for c in inspector.get_columns("orders")]
+        if "balance_applied" not in order_cols:
+            db.session.execute(text("ALTER TABLE orders ADD COLUMN balance_applied FLOAT DEFAULT 0.0"))
+            db.session.commit()
+    except Exception as e:
+        print(f"[Schema Migration Note]: {e}")
+    try:
         from models import ActivityLog
         if ActivityLog.query.count() == 0:
             sample_logs = [

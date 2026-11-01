@@ -1,9 +1,9 @@
-from flask import abort, redirect, render_template, request, session, url_for
+from flask import abort, jsonify, redirect, render_template, request, session, url_for
 from sqlalchemy import text
 from werkzeug.security import generate_password_hash
 from config import Config
 from extensions import db, limiter
-from models import User
+from models import User, WalletTransaction
 from helpers import login_required, save_user_image, admin_user_id_key
 from . import admin_bp
 
@@ -13,10 +13,47 @@ from . import admin_bp
 @limiter.limit("10 per minute", key_func=admin_user_id_key, methods=["GET"])
 def users():
     module = "users"
-    sql = text("SELECT * FROM user")
-    result = db.session.execute(sql)
-    rows = [dict(row._mapping) for row in result]
-    return render_template("admin/user/user.html", module=module, users=rows)
+    user_list = User.query.order_by(User.id.desc()).all()
+    total_return_balance = sum(float(u.balance or 0.0) for u in user_list)
+    return render_template(
+        "admin/user/user.html",
+        module=module,
+        users=user_list,
+        total_return_balance=total_return_balance
+    )
+
+
+@admin_bp.get("/users/<int:user_id>/wallet")
+@login_required
+def user_wallet(user_id):
+    """Returns customer return money & wallet transaction ledger for admin modal inspection."""
+    user = db.session.get(User, user_id)
+    if not user:
+        return jsonify({"success": False, "error": "User not found"}), 404
+
+    txs = WalletTransaction.query.filter_by(user_id=user.id).order_by(WalletTransaction.id.desc()).all()
+    tx_data = []
+    for t in txs:
+        order_num = t.order.order_number if t.order else "—"
+        tx_data.append({
+            "id": t.id,
+            "amount": t.amount,
+            "balance_after": t.balance_after,
+            "tx_type": t.tx_type,
+            "description": t.description,
+            "order_number": order_num,
+            "created_at": t.created_at.strftime("%Y-%m-%d %H:%M:%S") if t.created_at else "—",
+        })
+
+    return jsonify({
+        "success": True,
+        "user_id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "balance": round(float(user.balance or 0.0), 2),
+        "balance_khr": int(round((user.balance or 0.0) * Config.KHR_RATE)),
+        "transactions": tx_data,
+    })
 
 
 @admin_bp.route("/users/add", methods=["GET", "POST"])

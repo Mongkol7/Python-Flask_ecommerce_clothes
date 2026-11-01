@@ -68,9 +68,12 @@
     <div class="card-mk7 p-3">
       <div class="d-flex align-items-center justify-content-between">
         <div>
-          <span class="kicker-tag" style="font-size: 10.5px;">Gross Volume</span>
+          <span class="kicker-tag" style="font-size: 10.5px;">Net Realized Volume</span>
           <h4 class="mb-0 fw-bold text-dark">{{ total_revenue|khr_format }}</h4>
           <span class="text-secondary small">{{ total_revenue|usd_format }}</span>
+          <div class="text-danger small mt-1" style="font-size: 11px;">
+            <i class="bi bi-x-circle me-1"></i> -{{ cancelled_loss|usd_format }} ({{ cancelled_orders }} cancelled)
+          </div>
         </div>
         <div class="rounded-circle d-flex align-items-center justify-content-center bg-light" style="width: 44px; height: 44px;">
           <i class="bi bi-currency-dollar fs-4 text-dark"></i>

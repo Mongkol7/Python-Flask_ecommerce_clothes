@@ -57,14 +57,21 @@ def dashboard():
     confirmed_orders = Order.query.filter_by(status="confirmed").count()
     delivered_orders = Order.query.filter_by(status="delivered").count()
     cancelled_orders = Order.query.filter_by(status="cancelled").count()
-    gross_revenue = db.session.query(func.sum(Order.total)).filter(Order.status != "cancelled").scalar() or 0.0
+
+    # Financial & Accounting Calculations: Gross Sales, Net Realized Revenue, Cancelled Loss, Customer Store Credit Liability
+    gross_sales = db.session.query(func.sum(Order.total)).scalar() or 0.0
+    cancelled_loss = db.session.query(func.sum(Order.total)).filter(Order.status == "cancelled").scalar() or 0.0
+    net_revenue = db.session.query(func.sum(Order.total)).filter(Order.status != "cancelled").scalar() or 0.0
+    cancellation_rate = round((cancelled_orders / total_orders * 100), 1) if total_orders > 0 else 0.0
+    total_store_balance_liability = db.session.query(func.sum(User.balance)).scalar() or 0.0
 
     recent_orders = Order.query.order_by(Order.id.desc()).limit(6).all()
 
-    # 5. Real Chart Timeline: Past 7 Days
+    # 5. Real Chart Timeline: Past 7 Days (Net Sales vs. Cancelled Loss)
     today = datetime.utcnow().date()
     date_labels = []
     daily_revenue = []
+    daily_cancelled = []
     daily_orders_count = []
 
     for i in range(6, -1, -1):
@@ -74,14 +81,20 @@ def dashboard():
 
         day_orders = [o for o in Order.query.all() if o.created_at and o.created_at.date() == day]
         day_rev = sum(o.total for o in day_orders if o.status != "cancelled")
+        day_canc = sum(o.total for o in day_orders if o.status == "cancelled")
         daily_revenue.append(round(float(day_rev), 2))
+        daily_cancelled.append(round(float(day_canc), 2))
         daily_orders_count.append(len(day_orders))
 
     # 6. Recent Activity & Security Logs
     recent_logs = ActivityLog.query.order_by(ActivityLog.id.desc()).limit(5).all()
 
     stats = {
-        "total_revenue": gross_revenue,
+        "total_revenue": net_revenue,
+        "gross_sales": gross_sales,
+        "cancelled_loss": cancelled_loss,
+        "cancellation_rate": cancellation_rate,
+        "store_balance_liability": total_store_balance_liability,
         "total_orders": total_orders,
         "pending_orders": pending_orders,
         "confirmed_orders": confirmed_orders,
@@ -98,6 +111,7 @@ def dashboard():
         "total_brands": total_brands,
         "chart_dates": date_labels,
         "chart_revenue": daily_revenue,
+        "chart_cancelled": daily_cancelled,
         "chart_orders": daily_orders_count,
     }
 

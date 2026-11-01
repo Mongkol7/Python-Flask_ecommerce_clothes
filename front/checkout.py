@@ -5,6 +5,7 @@ from extensions import db, limiter
 from models.order import Order, OrderItem
 from models.product import Product
 from models.users import User
+from models.wallet import WalletTransaction
 from product import get_cart_items
 from helpers import load_cart, send_order_to_telegram, log_activity
 from services.khqr_service import generate_bakong_khqr, check_bakong_payment
@@ -13,7 +14,7 @@ from . import front_bp
 
 @front_bp.route("/checkout")
 def checkout():
-    """Renders the checkout page with dynamically generated Bakong KHQR for the cart total."""
+    """Renders the checkout page with dynamic Bakong KHQR for the remaining cart total after store balance."""
     if not session.get("is_login"):
         flash("Please sign in or create an account to proceed to checkout.", "warning")
         return redirect(url_for("front_bp.user_login", next=url_for("front_bp.checkout")))
@@ -40,12 +41,26 @@ def checkout():
         return redirect(url_for("front_bp.cart"))
 
     user = None
+    user_balance = 0.0
     if session.get("user_id"):
         user = db.session.get(User, session.get("user_id"))
+        user_balance = float(user.balance or 0.0) if user else 0.0
 
-    # Generate live Bakong KHQR (National Bank of Cambodia)
+    # User preference for applying store balance (from cancelled order returns)
+    use_balance_param = request.args.get("use_balance")
+    if use_balance_param is not None:
+        use_balance = str(use_balance_param).lower() in ["1", "true", "yes", "on"]
+    else:
+        use_balance = user_balance > 0
+
+    balance_applied = min(user_balance, total) if use_balance else 0.0
+    remaining_due = round(max(0.0, total - balance_applied), 2)
+
+    # Generate live Bakong KHQR for what is left to pay
     bill_number = Order.generate_order_number()
-    khqr_data = generate_bakong_khqr(amount=total, bill_number=bill_number, currency=Config.BAKONG_CURRENCY)
+    khqr_data = None
+    if remaining_due > 0:
+        khqr_data = generate_bakong_khqr(amount=remaining_due, bill_number=bill_number, currency=Config.BAKONG_CURRENCY)
 
     return render_template(
         "front/checkout.html",
@@ -53,6 +68,10 @@ def checkout():
         subtotal=total,
         total=total,
         user=user,
+        user_balance=user_balance,
+        use_balance=use_balance,
+        balance_applied=balance_applied,
+        remaining_due=remaining_due,
         khqr=khqr_data,
         bill_number=bill_number,
     )
@@ -128,35 +147,75 @@ def payment():
         flash("Please enter a valid email address.", "error")
         return redirect(url_for("front_bp.checkout"))
 
-    # Enforce Real Payment Gateway Only (Bakong KHQR)
+    # Enforce Real Payment Gateway (Bakong KHQR / Store Balance)
     submitted_method = form.get("payment_method", "").strip().lower()
-    if submitted_method not in ["bakong_khqr", "qr_payment"]:
-        flash("Only verified Bakong KHQR payments are accepted on this store.", "error")
+    if submitted_method not in ["bakong_khqr", "qr_payment", "wallet_balance", "split_wallet_khqr"]:
+        flash("Only verified Bakong KHQR or MK7 Store Balance payments are accepted.", "error")
         return redirect(url_for("front_bp.checkout"))
-    payment_method = "bakong_khqr"
+
+    user_id = session.get("user_id")
+    user_obj = db.session.get(User, user_id) if user_id else None
+    user_balance = float(user_obj.balance or 0.0) if user_obj else 0.0
+
+    # Determine store balance application
+    use_balance = form.get("use_balance") in ["1", "true", "on", "yes"]
+    balance_to_apply = min(user_balance, server_total) if use_balance else 0.0
+    remaining_due = round(max(0.0, server_total - balance_to_apply), 2)
 
     bill_number = form.get("bill_number", "").strip() or Order.generate_order_number()
     khqr_md5 = form.get("khqr_md5", "").strip()
-    khqr_string = form.get("khqr_string", "").strip()
+    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json
 
-    # 3. Verify Payment Status via NBC Bakong API
-    payment_status_text = "Pending Customer Transfer"
-    initial_order_status = "pending"
-    if khqr_md5:
+    # 3. Verify Payment Status BEFORE Creating Order
+    # If remaining_due > 0, customer MUST have paid via KHQR
+    wallet_tx = None
+    if remaining_due > 0:
+        if not khqr_md5:
+            err_msg = "Payment transaction identifier is missing. Please refresh and scan the QR code."
+            if is_ajax:
+                return jsonify({"success": False, "paid": False, "error": err_msg}), 400
+            flash(err_msg, "error")
+            return redirect(url_for("front_bp.checkout", use_balance="1" if use_balance else "0"))
+
         verify_res = check_bakong_payment(khqr_md5)
-        # STRICT RULE: ONLY set to confirmed if payment was actually verified as PAID
-        if verify_res.get("paid"):
-            initial_order_status = "confirmed"
-            payment_status_text = "Verified Paid (Bakong KHQR)"
-        else:
-            initial_order_status = "pending"
-            payment_status_text = "Pending Customer Transfer"
+        is_paid = verify_res.get("paid", False)
+        is_rate_limited = verify_res.get("rate_limited", False)
 
-    # 4. Create and persist customer Order in Database
-    user_id = session.get("user_id")
-    order_notes = f"Payment Gateway: Bakong KHQR (NBC) | Bill: {bill_number}"
-    if khqr_md5:
+        # STRICT RULE: If not verified as paid, REJECT order creation completely
+        if not is_paid and not is_rate_limited:
+            err_msg = "Payment not detected yet. Please ensure you completed the transfer on your banking app, wait a few moments, and click 'Confirm Payment' again."
+            if is_ajax:
+                return jsonify({"success": False, "paid": False, "error": err_msg}), 400
+            flash(err_msg, "error")
+            return redirect(url_for("front_bp.checkout", use_balance="1" if use_balance else "0"))
+
+        payment_method = "split_wallet_khqr" if balance_to_apply > 0 else "bakong_khqr"
+        payment_status_text = f"Verified Paid via Bakong KHQR (${remaining_due:.2f})"
+        if balance_to_apply > 0:
+            payment_status_text += f" + Store Balance (${balance_to_apply:.2f})"
+    else:
+        # 100% paid by user's store balance
+        payment_method = "wallet_balance"
+        payment_status_text = f"100% Paid with MK7 Store Balance (${server_total:.2f})"
+
+    # 4. Payment is verified! Deduct Store Balance if applied
+    if balance_to_apply > 0 and user_obj:
+        user_obj.balance = round(max(0.0, user_obj.balance - balance_to_apply), 2)
+        wallet_tx = WalletTransaction(
+            user_id=user_id,
+            amount=-balance_to_apply,
+            balance_after=user_obj.balance,
+            tx_type="order_payment",
+            description=f"Store credit payment applied to Order #{bill_number}",
+        )
+        db.session.add(wallet_tx)
+
+    # 5. Create Order: Status = 'pending' (Paid & in 4-Hour Cancellation Grace Period!)
+    order_notes = f"Payment Gateway: {payment_method} | Bill: {bill_number}"
+    if khqr_md5 and remaining_due > 0:
         order_notes += f" | MD5: {khqr_md5}"
+    if balance_to_apply > 0:
+        order_notes += f" | Store Balance Applied: ${balance_to_apply:.2f}"
     if note:
         order_notes += f"\nCustomer Note: {note}"
 
@@ -172,12 +231,13 @@ def payment():
         payment_method=payment_method,
         subtotal=server_total,
         total=server_total,
-        status=initial_order_status,
+        balance_applied=balance_to_apply,
+        status="pending",  # Paid & Placed -> 4-hour cancellation grace window active
         notes=order_notes,
     )
     db.session.add(db_order)
 
-    # 5. Add OrderItems & Deduct Product Stock in Real Time
+    # 6. Add OrderItems & Deduct Product Stock in Real Time
     for item in verified_items:
         order_item = OrderItem(
             order=db_order,
@@ -197,19 +257,23 @@ def payment():
 
     db.session.commit()
 
-    # 6. Log order placement in ActivityLog
+    if wallet_tx:
+        wallet_tx.order_id = db_order.id
+        db.session.commit()
+
+    # 7. Log order placement in ActivityLog
     try:
         log_activity(
             action="order_placed",
             module="orders",
-            description=f"Order #{db_order.order_number} placed via Bakong KHQR by {db_order.customer_name} (${db_order.total:.2f}). Inventory deducted.",
+            description=f"Order #{db_order.order_number} confirmed & placed by {db_order.customer_name} (${db_order.total:.2f}). Inventory deducted.",
             record_id=db_order.id,
             user_id=user_id,
         )
     except Exception:
         pass
 
-    # 7. Live Telegram Notification for Real-Time Alertation
+    # 8. Live Telegram Notification for Real-Time Alertation
     order_info = {
         "order_number": bill_number,
         "bill_number": bill_number,
@@ -228,8 +292,20 @@ def payment():
         "items": verified_items,
         "subtotal": server_total,
         "total": server_total,
+        "balance_applied": balance_to_apply,
+        "remaining_due": remaining_due,
     }
     telegram_sent, telegram_error = send_order_to_telegram(order_info)
+
+    if is_ajax:
+        resp_json = jsonify({
+            "success": True,
+            "paid": True,
+            "order_number": bill_number,
+            "redirect_url": url_for("front_bp.my_orders")
+        })
+        resp_json.delete_cookie(Config.CART_COOKIE_NAME)
+        return resp_json
 
     response = make_response(
         render_template(

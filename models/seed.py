@@ -8,6 +8,21 @@ def seed_database():
     """Seeds default categories, brands, and the 12 fashion products if tables are empty."""
     db.create_all()
 
+    # Ensure schema migrations: add balance and balance_applied if missing
+    try:
+        from sqlalchemy import inspect, text
+        inspector = inspect(db.engine)
+        user_cols = [c["name"] for c in inspector.get_columns("user")]
+        if "balance" not in user_cols:
+            db.session.execute(text("ALTER TABLE user ADD COLUMN balance FLOAT DEFAULT 0.0"))
+            db.session.commit()
+        order_cols = [c["name"] for c in inspector.get_columns("orders")]
+        if "balance_applied" not in order_cols:
+            db.session.execute(text("ALTER TABLE orders ADD COLUMN balance_applied FLOAT DEFAULT 0.0"))
+            db.session.commit()
+    except Exception as e:
+        print(f"[Schema Check]: {e}")
+
     # 1. Seed Categories if empty
     cat_map = {}
     if Category.query.count() == 0:

@@ -90,6 +90,41 @@
 </div>
 <!--end::Stat Metric Cards-->
 
+<!--begin::Financial Accounting & Return Loss Summary-->
+<div class="row g-4 mt-1">
+  <div class="col-md-4">
+    <div class="stat-card-luxury p-3">
+      <span class="stat-card-kicker text-muted">Net Realized Revenue</span>
+      <div class="fs-4 fw-bold text-dark mb-0">{{ stats.total_revenue|khr_format }}</div>
+      <div class="small text-muted">{{ stats.total_revenue|usd_format }}</div>
+      <div class="small text-success mt-2">
+        <i class="bi bi-graph-up-arrow me-1"></i> Active sales (Confirmed & Delivered)
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card-luxury p-3">
+      <span class="stat-card-kicker text-danger">Cancelled Sales & Loss</span>
+      <div class="fs-4 fw-bold text-danger mb-0">{{ stats.cancelled_loss|khr_format }}</div>
+      <div class="small text-muted">{{ stats.cancelled_loss|usd_format }}</div>
+      <div class="small text-danger mt-2">
+        <i class="bi bi-x-circle me-1"></i> {{ stats.cancelled_orders }} orders cancelled ({{ stats.cancellation_rate }}% rate)
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card-luxury p-3">
+      <span class="stat-card-kicker text-warning">Customer Store Credit Liability</span>
+      <div class="fs-4 fw-bold text-dark mb-0">{{ stats.store_balance_liability|khr_format }}</div>
+      <div class="small text-muted">{{ stats.store_balance_liability|usd_format }}</div>
+      <div class="small text-secondary mt-2">
+        <i class="bi bi-wallet2 me-1"></i> Return money owed across customer balances
+      </div>
+    </div>
+  </div>
+</div>
+<!--end::Financial Accounting & Return Loss Summary-->
+
 <!--begin::Main Charts & Quick Panels-->
 <div class="row g-4 mt-1">
   <!-- Revenue & Orders Chart -->
@@ -340,14 +375,20 @@ document.addEventListener('DOMContentLoaded', function () {
   const statsData = dataScript ? JSON.parse(dataScript.textContent) : {};
   const chartDates = statsData.chart_dates || [];
   const chartRevenue = statsData.chart_revenue || [];
+  const chartCancelled = statsData.chart_cancelled || [];
   const chartOrders = statsData.chart_orders || [];
 
   const chartOptions = {
     series: [
       {
-        name: 'Revenue ($)',
+        name: 'Net Revenue ($)',
         type: 'area',
         data: chartRevenue,
+      },
+      {
+        name: 'Cancelled Loss ($)',
+        type: 'line',
+        data: chartCancelled,
       },
       {
         name: 'Orders Placed',
@@ -363,20 +404,21 @@ document.addEventListener('DOMContentLoaded', function () {
         show: false,
       },
     },
-    colors: ['#0a0a0a', '#b89d72'],
+    colors: ['#0a0a0a', '#ef4444', '#b89d72'],
     stroke: {
-      width: [2.5, 0],
+      width: [2.5, 2, 0],
+      dashArray: [0, 4, 0],
       curve: 'smooth',
     },
     fill: {
-      type: ['gradient', 'solid'],
+      type: ['gradient', 'solid', 'solid'],
       gradient: {
         shadeIntensity: 1,
         opacityFrom: 0.35,
         opacityTo: 0.05,
         stops: [0, 90, 100],
       },
-      opacity: [0.35, 0.85],
+      opacity: [0.35, 1, 0.85],
     },
     dataLabels: {
       enabled: false,

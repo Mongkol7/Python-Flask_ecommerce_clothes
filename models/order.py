@@ -18,6 +18,7 @@ class Order(db.Model):
     payment_method = db.Column(db.String(50), default="qr_payment")
     subtotal = db.Column(db.Float, default=0.0)
     total = db.Column(db.Float, default=0.0)
+    balance_applied = db.Column(db.Float, default=0.0)
     status = db.Column(db.String(30), default="pending")  # pending, confirmed, processing, shipped, delivered, cancelled
     notes = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -49,6 +50,7 @@ class Order(db.Model):
             "payment_method": self.payment_method,
             "subtotal": self.subtotal,
             "total": self.total,
+            "balance_applied": getattr(self, "balance_applied", 0.0) or 0.0,
             "status": self.status,
             "notes": self.notes,
             "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else None,

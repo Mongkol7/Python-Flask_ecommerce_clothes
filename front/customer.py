@@ -7,7 +7,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from config import Config
 from extensions import db, limiter
 from helpers import is_failed_login, is_ip_login_banned, is_ip_signup_banned, log_activity, send_order_cancellation_to_telegram
-from models import User, Order, OrderItem, Product
+from models import User, Order, OrderItem, Product, WalletTransaction, Notification
 from upload_service import save_user_image, allowed_file
 from . import front_bp
 
@@ -261,11 +261,37 @@ def cancel_order(order_id):
                 if prod:
                     prod.stock += item.quantity
 
+        # Refund 100% of order total to User Store Balance
+        current_user_obj = db.session.get(User, user_id)
+        refund_amount = round(float(order.total or 0.0), 2)
+        if current_user_obj:
+            current_user_obj.balance = round(float(current_user_obj.balance or 0.0) + refund_amount, 2)
+            
+            # Record persistent WalletTransaction
+            wallet_tx = WalletTransaction(
+                user_id=user_id,
+                order_id=order.id,
+                amount=refund_amount,
+                balance_after=current_user_obj.balance,
+                tx_type="refund_credit",
+                description=f"Store Credit Refund for cancelled Order #{order.order_number}",
+            )
+            db.session.add(wallet_tx)
+
+            # Create notification for customer
+            notif = Notification(
+                user_id=user_id,
+                title="Refund Credited to Balance",
+                message=f"Order #{order.order_number} has been cancelled. ${refund_amount:.2f} has been added to your MK7 Account Balance as store credit.",
+                category="refund",
+                link=url_for("front_bp.user_profile") + "#wallet",
+            )
+            db.session.add(notif)
+
         db.session.commit()
 
         # Send Telegram cancellation alert
         try:
-            current_user_obj = db.session.get(User, user_id)
             send_order_cancellation_to_telegram(order, user=current_user_obj)
         except Exception:
             pass
@@ -274,14 +300,14 @@ def cancel_order(order_id):
             log_activity(
                 action="order_cancelled_by_user",
                 module="orders",
-                description=f"Order #{order.order_number} was cancelled by user within 4 hours. Inventory restocked.",
+                description=f"Order #{order.order_number} was cancelled by user within 4 hours. Inventory restocked. ${refund_amount:.2f} refunded to store balance.",
                 user_id=user_id,
             )
         except Exception:
             pass
 
-        flash(f"Order #{order.order_number} has been cancelled successfully. Your payment is refunded and item stock restored.", "success")
-        return redirect(url_for("front_bp.my_orders"))
+        flash(f"Order #{order.order_number} has been cancelled successfully. ${refund_amount:.2f} has been refunded to your MK7 Account Balance as store credit. You can use it to purchase any items on this store.", "success")
+        return redirect(url_for("front_bp.user_profile") + "#wallet")
 
     elif elapsed > timedelta(hours=4):
         # Window expired -> auto-transition to confirmed
@@ -516,10 +542,27 @@ def user_profile():
 
     # Stats for profile overview
     order_count = Order.query.filter_by(user_id=user.id).count()
+    wallet_transactions = WalletTransaction.query.filter_by(user_id=user.id).order_by(WalletTransaction.id.desc()).all()
+    user_notifications = Notification.query.filter_by(user_id=user.id).order_by(Notification.id.desc()).limit(15).all()
+    unread_notifs = Notification.query.filter_by(user_id=user.id, is_read=False).count()
 
     return render_template(
         "front/profile.html",
         user=user,
         order_count=order_count,
+        wallet_transactions=wallet_transactions,
+        notifications=user_notifications,
+        unread_notifs=unread_notifs,
     )
+
+
+@front_bp.post("/notifications/mark-read")
+def mark_notifications_read():
+    """Marks all customer notifications as read."""
+    if not session.get("is_login"):
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+    user_id = session.get("user_id")
+    Notification.query.filter_by(user_id=user_id, is_read=False).update({"is_read": True})
+    db.session.commit()
+    return jsonify({"success": True})
 

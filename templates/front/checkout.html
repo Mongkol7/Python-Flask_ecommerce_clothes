@@ -16,9 +16,33 @@
 
     <section class="checkout-section">
         <div class="container checkout-container">
-            <div class="text-center mb-5">
+            <div class="text-center mb-4">
                 <h2 class="hero-title checkout-title">Secure <em>Checkout</em></h2>
             </div>
+
+            <!-- Flash Error / Info Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="mb-4">
+                {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category in ['error', 'danger'] else ('warning' if category == 'warning' else 'success') }} alert-dismissible fade show rounded-4 shadow-sm" role="alert">
+                    <i class="bi bi-{{ 'exclamation-octagon-fill' if category in ['error', 'danger'] else 'check-circle-fill' }} me-2"></i> {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endwith %}
+
+            <div id="livePaymentAlert" class="alert alert-danger rounded-4 shadow-sm mb-4 d-none" role="alert">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+                    <div>
+                        <strong>Payment Not Detected Yet:</strong> <span id="livePaymentAlertMsg">We haven't received confirmation from your bank app for this transfer. Please complete the transfer on your banking app, wait a few seconds, and click 'Confirm Payment' again.</span>
+                    </div>
+                </div>
+            </div>
+
             {% if checkout_success %}
             <div class="glass success-card mb-5 text-center">
                 {% if telegram_sent %}
@@ -31,15 +55,9 @@
     </svg>
   </div>
 </div>
-                {% if order and order.status == 'confirmed' %}
-                <p class="section-label text-success"><i class="bi bi-check-circle-fill me-1"></i> Payment Verified & Order Confirmed</p>
+                <p class="section-label text-success"><i class="bi bi-check-circle-fill me-1"></i> Payment Verified &amp; Order Placed</p>
                 <h3 class="success-title">Your order has been paid and confirmed!</h3>
-                <p class="success-copy mb-0">Thank you, {{ order_info.shipping.full_name }}. We received your payment via Bakong KHQR and your order is being processed.</p>
-                {% else %}
-                <p class="section-label text-warning"><i class="bi bi-hourglass-split me-1"></i> Order Placed &bull; Awaiting Payment</p>
-                <h3 class="success-title">Order #{{ order.order_number if order else '' }} Received</h3>
-                <p class="success-copy mb-0">Your order has been recorded with status <strong>Pending</strong>. You can finalize payment anytime from <a href="{{ url_for('front_bp.my_orders') }}" class="fw-bold text-dark text-decoration-underline">My Orders</a>.</p>
-                {% endif %}
+                <p class="success-copy mb-0">Thank you, {{ order_info.shipping.full_name }}. We received your payment. Your order #<strong>{{ order.order_number if order else '' }}</strong> is in the <strong>4-hour cancellation grace window</strong>. If you need to make changes, you can cancel it for a 100% store balance refund.</p>
                 {% else %}
                 <p class="section-label">Order Not Confirmed</p>
                 <h3 class="success-title">We could not complete your order.</h3>
@@ -100,13 +118,60 @@
                         <div class="col-12"><textarea name="note" class="form-control glass checkout-input checkout-note" placeholder="Delivery note"></textarea></div>
                     </div>
                 </div>
+
+                <!-- Store Balance / Return Money Application Option -->
+                {% if user_balance and user_balance > 0 %}
+                <div class="mb-5 p-4 rounded-4 border shadow-sm" style="background: #ffffff; border: 1.5px solid rgba(0,0,0,0.08) !important;">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-dark text-white p-2 d-flex align-items-center justify-content-center shadow-sm" style="width: 44px; height: 44px;">
+                                <i class="bi bi-wallet2 text-warning fs-5"></i>
+                            </div>
+                            <div>
+                                <h4 class="fs-6 fw-bold text-dark mb-1">Use MK7 Store Balance / Return Money</h4>
+                                <span class="text-muted small">You have <strong>${{ "%.2f"|format(user_balance) }}</strong> ({{ (user_balance * 4000)|int }} ៛) available from cancelled orders.</span>
+                            </div>
+                        </div>
+                        <div class="form-check form-switch fs-4 mb-0">
+                            <input class="form-check-input" type="checkbox" role="switch" id="useBalanceSwitch" name="use_balance" value="1" {% if use_balance %}checked{% endif %} onchange="toggleStoreBalance(this.checked)">
+                        </div>
+                    </div>
+                    {% if use_balance %}
+                    <div class="mt-3 pt-3 border-top small">
+                        <div class="d-flex justify-content-between text-muted mb-1">
+                            <span>Store Credit Applied:</span>
+                            <span class="fw-bold text-success">-${{ "%.2f"|format(balance_applied) }} ({{ (balance_applied * 4000)|int }} ៛)</span>
+                        </div>
+                        {% if remaining_due > 0 %}
+                        <div class="d-flex justify-content-between text-muted">
+                            <span>Remaining Left to Pay via KHQR:</span>
+                            <span class="fw-bold text-dark fs-6">${{ "%.2f"|format(remaining_due) }} ({{ (remaining_due * 4000)|int }} ៛)</span>
+                        </div>
+                        {% else %}
+                        <div class="text-success fw-bold small mt-1">
+                            <i class="bi bi-check-circle-fill me-1"></i> Full total is covered by your store credit! No KHQR scan required.
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
                 <div class="mb-5">
                     <div class="d-flex align-items-center justify-content-between mb-2">
-                        <p class="section-label mb-0">2. Real Payment Gateway (Bakong KHQR)</p>
+                        <p class="section-label mb-0">2. Payment Gateway</p>
+                        {% if remaining_due > 0 %}
                         <span class="badge" style="background: #e11d48; color: #fff; font-size: 11px; letter-spacing: 0.5px; border-radius: 100px; padding: 5px 12px; font-weight: 600;">
                             KHQR &bull; National Bank of Cambodia
                         </span>
+                        {% else %}
+                        <span class="badge bg-success" style="font-size: 11px; letter-spacing: 0.5px; border-radius: 100px; padding: 5px 12px; font-weight: 600;">
+                            <i class="bi bi-check-circle-fill me-1"></i> Store Credit 100%
+                        </span>
+                        {% endif %}
                     </div>
+
+                    {% if remaining_due > 0 %}
                     <div class="glass qr-payment-card" style="border: 1.5px solid rgba(225, 29, 72, 0.25);">
                         {% if khqr and khqr.base64_uri %}
                         <div class="text-center">
@@ -123,11 +188,17 @@
                         <div>
                             <div class="d-flex align-items-center gap-2 mb-1">
                                 <span class="badge bg-danger rounded-pill" style="font-size: 10px; padding: 3px 8px;">BAKONG</span>
-                                <span class="small fw-semibold text-dark">{{ khqr.merchant_name if khqr else 'SETEC' }}</span>
+                                <span class="small fw-semibold text-dark">{{ khqr.merchant_name if khqr else 'MK7' }}</span>
                             </div>
-                            <h3 class="payment-title" style="font-size: 22px; margin-bottom: 6px;">Scan With Any Banking App</h3>
+                            <h3 class="payment-title" style="font-size: 22px; margin-bottom: 6px;">
+                                {% if balance_applied > 0 %}
+                                Scan What's Left to Pay
+                                {% else %}
+                                Scan With Any Banking App
+                                {% endif %}
+                            </h3>
                             <p class="payment-copy small mb-2" style="line-height: 1.5;">
-                                Open <strong>Bakong App</strong> or any banking app (ABA, Acleda, Wing, Canadia, etc.) to scan and complete your real-time payment.
+                                Open <strong>Bakong App</strong> or any banking app (ABA, Acleda, Wing, Canadia, etc.) to scan and complete what is left to pay.
                             </p>
                             <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
                                 <span class="small text-muted">Bill: <code>{{ bill_number }}</code></span>
@@ -138,19 +209,33 @@
                                 {% endif %}
                             </div>
                             <div class="payment-total">
-                                {{ subtotal|khr_format }}
-                                <span class="text-muted small fw-normal d-block" style="font-size: 0.82rem;">({{ subtotal|usd_format }})</span>
+                                {{ (remaining_due * 4000)|int }} ៛
+                                <span class="text-muted small fw-normal d-block" style="font-size: 0.82rem;">(≈ ${{ "%.2f"|format(remaining_due) }} USD)</span>
                             </div>
                         </div>
                     </div>
                     <div class="alert alert-light border small py-2 px-3 mt-3 mb-0 d-flex align-items-center gap-2 text-muted" style="border-radius: 8px; font-size: 12px;">
                         <i class="bi bi-info-circle text-primary"></i>
-                        <span><strong>Step 1:</strong> Scan QR with your banking app to transfer &bull; <strong>Step 2:</strong> Click the button below to complete your order.</span>
+                        <span><strong>Step 1:</strong> Scan QR with your banking app to transfer &bull; <strong>Step 2:</strong> Click the button below to verify payment and complete order.</span>
                     </div>
-                    <input type="hidden" name="payment_method" value="bakong_khqr">
+                    <input type="hidden" name="payment_method" value="{% if balance_applied > 0 %}split_wallet_khqr{% else %}bakong_khqr{% endif %}">
                     <input type="hidden" name="bill_number" value="{{ bill_number }}">
                     <input type="hidden" name="khqr_md5" id="khqrMd5Input" value="{{ khqr.md5 if khqr else '' }}">
                     <input type="hidden" name="khqr_string" id="khqrStringInput" value="{{ khqr.qr_string if khqr else '' }}">
+                    {% else %}
+                    <!-- 100% Paid by Store Balance Card -->
+                    <div class="glass p-4 rounded-4 border text-center shadow-sm" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-color: #86efac !important;">
+                        <div class="d-inline-flex p-3 rounded-circle bg-success text-white mb-3">
+                            <i class="bi bi-check2-circle fs-2"></i>
+                        </div>
+                        <h4 class="fw-bold text-dark mb-1">100% Covered by MK7 Store Balance</h4>
+                        <p class="text-muted small mb-0">No bank transfer required! Your full order total of <strong>${{ "%.2f"|format(subtotal) }}</strong> will be deducted from your return money balance.</p>
+                        <input type="hidden" name="payment_method" value="wallet_balance">
+                        <input type="hidden" name="bill_number" value="{{ bill_number }}">
+                        <input type="hidden" name="khqr_md5" id="khqrMd5Input" value="">
+                        <input type="hidden" name="khqr_string" id="khqrStringInput" value="">
+                    </div>
+                    {% endif %}
                 </div>
                 <div class="mb-5">
                     <p class="section-label">3. Order Summary</p>
@@ -172,16 +257,48 @@
                             </div>
                         </div>
                         {% endfor %}
-                        <div class="d-flex justify-content-between border-top pt-3 mt-3 fw-bold align-items-center">
-                            <span>Total</span>
+                        <div class="d-flex justify-content-between border-top pt-3 mt-3 align-items-center">
+                            <span>Subtotal</span>
+                            <div class="text-end">
+                                <span class="fw-semibold">{{ subtotal|khr_format }}</span>
+                                <div class="small text-muted fw-normal" style="font-size: 0.82rem;">{{ subtotal|usd_format }}</div>
+                            </div>
+                        </div>
+                        {% if balance_applied and balance_applied > 0 %}
+                        <div class="d-flex justify-content-between text-success pt-2 align-items-center">
+                            <span><i class="bi bi-wallet2 me-1"></i> Store Balance Applied</span>
+                            <div class="text-end fw-bold">
+                                -${{ "%.2f"|format(balance_applied) }}
+                                <div class="small fw-normal" style="font-size: 0.8rem;">(-{{ (balance_applied * 4000)|int }} ៛)</div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between border-top pt-2 mt-2 fw-bold align-items-center">
+                            <span>Remaining Due via Banking KHQR</span>
+                            <div class="text-end text-danger fs-5">
+                                {{ (remaining_due * 4000)|int }} ៛
+                                <div class="small text-muted fw-normal" style="font-size: 0.82rem;">(≈ ${{ "%.2f"|format(remaining_due) }} USD)</div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="d-flex justify-content-between border-top pt-2 mt-2 fw-bold align-items-center">
+                            <span>Total Due</span>
                             <div class="text-end">
                                 <span class="fs-5">{{ subtotal|khr_format }}</span>
                                 <div class="small text-muted fw-normal" style="font-size: 0.85rem;">{{ subtotal|usd_format }}</div>
                             </div>
                         </div>
+                        {% endif %}
                     </div>
                 </div>
-                <button type="submit" id="checkoutSubmitBtn" class="btn-pill-dark w-100 justify-content-center py-3">Pay {{ subtotal|khr_format }} ({{ subtotal|usd_format }})</button>
+                {% if remaining_due > 0 %}
+                <button type="submit" id="checkoutSubmitBtn" class="btn-pill-dark w-100 justify-content-center py-3">
+                    <i class="bi bi-check2-circle me-2"></i> Confirm Payment &amp; Place Order ({{ (remaining_due * 4000)|int }} ៛ / ${{ "%.2f"|format(remaining_due) }})
+                </button>
+                {% else %}
+                <button type="submit" id="checkoutSubmitBtn" class="btn-pill-dark w-100 justify-content-center py-3" style="background: #15803d; border-color: #15803d;">
+                    <i class="bi bi-wallet2 me-2"></i> Confirm &amp; Pay with Store Balance (${{ "%.2f"|format(subtotal) }})
+                </button>
+                {% endif %}
             </form>
             {% else %}
             <div class="glass empty-checkout text-center">
@@ -194,14 +311,68 @@
     </section>
 
     <script>
+    function toggleStoreBalance(isChecked) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('use_balance', isChecked ? '1' : '0');
+        window.location.href = url.toString();
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         const checkoutForm = document.getElementById('checkoutForm');
         const submitBtn = document.getElementById('checkoutSubmitBtn');
+        const alertBox = document.getElementById('livePaymentAlert');
+        const alertMsg = document.getElementById('livePaymentAlertMsg');
+        const khqrMd5Input = document.getElementById('khqrMd5Input');
+        const remainingDue = {{ remaining_due|default(0.0) }};
 
         if (checkoutForm && submitBtn) {
-            checkoutForm.addEventListener('submit', function() {
-                submitBtn.disabled = true;
-                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Processing Order...';
+            checkoutForm.addEventListener('submit', async function(e) {
+                // If there is an amount due via KHQR, verify with bank before allowing submission
+                if (remainingDue > 0 && khqrMd5Input && khqrMd5Input.value) {
+                    e.preventDefault();
+
+                    // Check basic form validation first
+                    if (!checkoutForm.checkValidity()) {
+                        checkoutForm.reportValidity();
+                        return;
+                    }
+
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Verifying Transfer with NBC Bakong...';
+
+                    if (alertBox) alertBox.classList.add('d-none');
+
+                    try {
+                        const md5 = khqrMd5Input.value.trim();
+                        const res = await fetch('/api/payment/check/' + encodeURIComponent(md5));
+                        const data = await res.json();
+
+                        if (data && (data.paid === true || data.rate_limited === true)) {
+                            // Verified paid! Allow form to submit normally
+                            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Payment Verified! Creating Order...';
+                            checkoutForm.submit();
+                        } else {
+                            // Payment not received yet
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = '<i class="bi bi-check2-circle me-2"></i> Confirm Payment &amp; Place Order';
+                            if (alertBox) {
+                                alertBox.classList.remove('d-none');
+                                if (alertMsg && data.message) {
+                                    alertMsg.textContent = data.message;
+                                }
+                                alertBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                        }
+                    } catch (err) {
+                        console.error('Error verifying payment:', err);
+                        // On network error or check issue, fallback to normal submission so server handles verification
+                        checkoutForm.submit();
+                    }
+                } else {
+                    // 100% store balance payment - submit directly
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Processing Order with Store Balance...';
+                }
             });
         }
     });
