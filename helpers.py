@@ -437,159 +437,91 @@ def get_client_public_ip():
     remote = request.remote_addr
     if remote and remote not in ("127.0.0.1", "::1", "localhost"):
         return remote #return Client IP
-    #Strategy03: Localhost Fallback for Local Development 
-    if _cached_public_ip:#if cached IP is available, return it (cached for performance)
-        return _cached_public_ip #return cached IP
-    #Strategy04: external service to get public IP(fallback to ipify.org)
+def get_client_public_ip():
+    """Returns the true client IP from request headers (X-Forwarded-For from Nginx) or remote_addr."""
     try:
-        #for localhost, use ipify(is a free service that returns the public IP address of the client.)
-        req = urllib.request.Request(
-            "https://api.ipify.org?format=text",
-            headers={"User-Agent": "Mozilla/5.0"} #specify user agent to avoid 403 Forbidden Error
-        )
-        with urllib.request.urlopen(req, timeout=2) as response: #Set timeout to 2 seconds
-            public_ip = response.read().decode("utf-8").strip() #Read and decode the response
-            if public_ip:
-                _cached_public_ip = public_ip #cache the public IP(so future don't have to make any web calls)
-                return public_ip #return public IP
+        from flask import request
+        forwarded = request.headers.get("X-Forwarded-For")
+        if forwarded:
+            client_ip = forwarded.split(",")[0].strip()
+            if client_ip and client_ip not in ("127.0.0.1", "::1", "localhost"):
+                return client_ip
+        remote = request.remote_addr
+        if remote and remote not in ("127.0.0.1", "::1", "localhost"):
+            return remote
     except Exception:
-        #do nothing if any error occurs (e.g. network issue, ipify being down, etc.)
         pass
+    return "127.0.0.1"
 
-    #If all else fails, return remote IP or localhost
-    return remote or "127.0.0.1" 
 
-#The 3 dictionaries: to temporarily stores information aboutIP addresess that are temporarily banned from logging in or signing up.
-# Cache for active 429 rate limit blocks: maps block_key -> reset_at epoch timestamp
+# Active login and signup ban registries (in-memory per client IP)
 _active_429_blocks = {}
-
-# Active login ban registry per IP: maps ip_address -> expires_at epoch timestamp
 _login_bans = {}
-
-# Active signup/registration ban registry per IP: maps ip_address -> expires_at epoch timestamp
 _signup_bans = {}
 
 
 def record_login_ban(duration=60):
-    """
-    Records a temporary ban for the current client IP on login endpoints.
-    Blocks both GET and POST requests for the duration.
-    Preserves existing timer if a ban is already active (prevents timer reset on 'Try Again').
-    """
+    """Records a temporary ban for the client IP on login endpoints."""
     now = time.time()
     expires_at = now + duration
-    from flask_limiter.util import get_remote_address
     try:
-        from flask import request
-        ips = {
-            get_remote_address(),
-            request.remote_addr,
-            get_client_public_ip(),
-            getattr(request, "environ", {}).get("REMOTE_ADDR"),
-        }
-        for ip in ips:
-            if ip:
-                existing_expiry = _login_bans.get(ip)
-                # DO NOT reset or extend timer if ban is already active!
-                if not existing_expiry or existing_expiry <= now:
-                    _login_bans[ip] = expires_at
+        ip = get_client_public_ip()
+        if ip and ip not in ("127.0.0.1", "::1", "localhost"):
+            existing_expiry = _login_bans.get(ip)
+            if not existing_expiry or existing_expiry <= now:
+                _login_bans[ip] = expires_at
     except Exception:
         pass
 
 
 def is_ip_login_banned():
-    """
-    Checks if the current client IP has an active login ban.
-    Returns remaining seconds if banned (> 0), or 0 if not banned.
-    Automatically cleans up expired ban records.
-    """
+    """Checks if the client IP has an active login ban. Returns remaining seconds, or 0."""
     now = time.time()
-    #1. Clean up expired bans from memory
     for k in list(_login_bans.keys()):
         if _login_bans[k] <= now:
-            del _login_bans[k] #del is delete (if the time that we put in _login_bans is less than now which means the time is expired)
+            del _login_bans[k]
 
-    #2. Check if current IP is banned
-    from flask_limiter.util import get_remote_address
     try:
-        from flask import request
-        ips = {
-            get_remote_address(),
-            request.remote_addr,
-            get_client_public_ip(),
-            getattr(request, "environ", {}).get("REMOTE_ADDR"),
-        }
-        max_remaining = 0 #0 is means no longer banned(time remaining)
-        for ip in ips:
-            if ip and ip in _login_bans:
-                expires_at = _login_bans[ip]
-                if expires_at > now:
-                    rem = int(expires_at - now)
-                    if rem > max_remaining:
-                        max_remaining = rem #Update the remaining time
-        return max_remaining  # Returns remaining seconds (e.g. 35)
+        ip = get_client_public_ip()
+        if ip and ip not in ("127.0.0.1", "::1", "localhost") and ip in _login_bans:
+            expires_at = _login_bans[ip]
+            if expires_at > now:
+                return int(expires_at - now)
     except Exception:
-        return 0 # 0 means NOT banned
+        pass
+    return 0
 
 
 def record_signup_ban(duration=60):
-    """
-    Records a temporary ban for the current client IP on signup/register endpoints.
-    Blocks both GET and POST requests for the duration.
-    Preserves existing timer if a ban is already active (prevents timer reset on 'Try Again').
-    """
+    """Records a temporary ban for the client IP on signup endpoints."""
     now = time.time()
     expires_at = now + duration
-    from flask_limiter.util import get_remote_address
     try:
-        from flask import request
-        ips = {
-            get_remote_address(),
-            request.remote_addr,
-            get_client_public_ip(),
-            getattr(request, "environ", {}).get("REMOTE_ADDR"),
-        }
-        for ip in ips:
-            if ip:
-                existing_expiry = _signup_bans.get(ip)
-                # DO NOT reset or extend timer if ban is already active!
-                if not existing_expiry or existing_expiry <= now:
-                    _signup_bans[ip] = expires_at
+        ip = get_client_public_ip()
+        if ip and ip not in ("127.0.0.1", "::1", "localhost"):
+            existing_expiry = _signup_bans.get(ip)
+            if not existing_expiry or existing_expiry <= now:
+                _signup_bans[ip] = expires_at
     except Exception:
         pass
 
 
 def is_ip_signup_banned():
-    """
-    Checks if the current client IP has an active signup ban.
-    Returns remaining seconds if banned (> 0), or 0 if not banned.
-    Automatically cleans up expired ban records.
-    """
+    """Checks if the client IP has an active signup ban. Returns remaining seconds, or 0."""
     now = time.time()
     for k in list(_signup_bans.keys()):
         if _signup_bans[k] <= now:
             del _signup_bans[k]
 
-    from flask_limiter.util import get_remote_address
     try:
-        from flask import request
-        ips = {
-            get_remote_address(),
-            request.remote_addr,
-            get_client_public_ip(),
-            getattr(request, "environ", {}).get("REMOTE_ADDR"),
-        }
-        max_remaining = 0
-        for ip in ips:
-            if ip and ip in _signup_bans:
-                expires_at = _signup_bans[ip]
-                if expires_at > now:
-                    rem = int(expires_at - now)
-                    if rem > max_remaining:
-                        max_remaining = rem
-        return max_remaining
+        ip = get_client_public_ip()
+        if ip and ip not in ("127.0.0.1", "::1", "localhost") and ip in _signup_bans:
+            expires_at = _signup_bans[ip]
+            if expires_at > now:
+                return int(expires_at - now)
     except Exception:
-        return 0
+        pass
+    return 0
 
 #Telegram Alert Function:
 #get bot_token and chat_id from config.py file
