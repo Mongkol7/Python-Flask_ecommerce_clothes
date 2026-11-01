@@ -12,6 +12,16 @@ from upload_service import save_user_image, allowed_file
 from . import front_bp
 
 
+def _clean_next_url(url_val, default_endpoint="front_bp.home"):
+    """Sanitizes next redirect URL, preventing redirect to 'None' string or open redirects."""
+    if not url_val or str(url_val).strip().lower() in ["none", "null", "", "undefined"]:
+        return url_for(default_endpoint)
+    clean = str(url_val).strip()
+    if clean.startswith("/") and not clean.startswith("//"):
+        return clean
+    return url_for(default_endpoint)
+
+
 @front_bp.route("/user/login", methods=["GET", "POST"])
 @front_bp.route("/login", methods=["GET", "POST"])
 @limiter.limit("10 per minute", methods=["GET"])
@@ -40,11 +50,11 @@ def user_login():
                 session["profile"] = user.profile
                 session.permanent = True
 
-                next_url = request.args.get("next") or request.form.get("next")
+                raw_next = request.args.get("next") or request.form.get("next")
                 if user.role == "admin":
-                    return redirect(next_url or url_for("admin_bp.dashboard"))
+                    return redirect(_clean_next_url(raw_next, "admin_bp.dashboard"))
                 else:
-                    return redirect(next_url or url_for("front_bp.home"))
+                    return redirect(_clean_next_url(raw_next, "front_bp.home"))
             else:
                 flash("Invalid username or password.", "error")
                 res = redirect(url_for("front_bp.user_login", next=request.args.get("next") or request.form.get("next")))
@@ -57,11 +67,11 @@ def user_login():
             return res
 
     if session.get("is_login"):
-        next_url = request.args.get("next")
+        raw_next = request.args.get("next")
         if session.get("role") == "admin":
-            return redirect(next_url or url_for("admin_bp.dashboard"))
+            return redirect(_clean_next_url(raw_next, "admin_bp.dashboard"))
         else:
-            return redirect(next_url or url_for("front_bp.home"))
+            return redirect(_clean_next_url(raw_next, "front_bp.home"))
 
     return render_template(
         "admin/login.html",
@@ -89,7 +99,8 @@ def user_register():
 
     # Login rate limit bans DO NOT apply here: Sign Up is separate!
     module = "register"
-    next_param = request.args.get("next") or request.form.get("next")
+    raw_next = request.args.get("next") or request.form.get("next")
+    safe_next = _clean_next_url(raw_next, "front_bp.home")
     
     if request.method == "POST":
         form = request.form
@@ -100,22 +111,22 @@ def user_register():
 
         if not username or not email or not password:
             flash("All fields are required.", "error")
-            return redirect(url_for("front_bp.user_register", next=next_param))
+            return redirect(url_for("front_bp.user_register", next=raw_next if raw_next and raw_next != "None" else None))
 
         if len(password) < 4:
             flash("Password must be at least 4 characters long.", "error")
-            return redirect(url_for("front_bp.user_register", next=next_param))
+            return redirect(url_for("front_bp.user_register", next=raw_next if raw_next and raw_next != "None" else None))
 
         if confirm_password and password != confirm_password:
             flash("Passwords do not match.", "error")
-            return redirect(url_for("front_bp.user_register", next=next_param))
+            return redirect(url_for("front_bp.user_register", next=raw_next if raw_next and raw_next != "None" else None))
 
         # Check existing user by username or email
         sql = text("SELECT id FROM user WHERE username = :username OR email = :email")
         existing = db.session.execute(sql, {"username": username, "email": email}).fetchone()
         if existing:
             flash("Username or Email already registered. Please sign in.", "error")
-            return redirect(url_for("front_bp.user_register", next=next_param))
+            return redirect(url_for("front_bp.user_register", next=raw_next if raw_next and raw_next != "None" else None))
 
         hashed = generate_password_hash(password)
         insert_sql = text("INSERT INTO user (username, email, password, role) VALUES (:username, :email, :password, 'user')")
@@ -131,10 +142,10 @@ def user_register():
         session.permanent = True
 
         flash("Welcome to MK7! Your account has been created successfully.", "success")
-        return redirect(next_param or url_for("front_bp.home"))
+        return redirect(safe_next)
 
     if session.get("is_login"):
-        return redirect(next_param or url_for("front_bp.home"))
+        return redirect(safe_next)
 
     return render_template(
         "front/register.html",

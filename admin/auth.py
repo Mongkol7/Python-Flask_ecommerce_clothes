@@ -41,8 +41,12 @@ def admin_login():
                 session["profile"] = user.profile
                 session.permanent = True
 
-                next_url = request.args.get("next")
-                return redirect(next_url or url_for("admin_bp.dashboard"))
+                raw_next = request.args.get("next") or request.form.get("next")
+                if not raw_next or str(raw_next).strip().lower() in ["none", "null", "", "undefined"] or not str(raw_next).startswith("/"):
+                    next_url = url_for("admin_bp.dashboard")
+                else:
+                    next_url = raw_next
+                return redirect(next_url)
             else:
                 flash("Invalid username or password.", "error")
                 res = redirect(url_for("admin_bp.admin_login", next=request.args.get("next")))

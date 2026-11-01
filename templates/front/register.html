@@ -62,7 +62,7 @@
           <form action="" method="POST" id="registerForm">
             <!-- CSRF token -->
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="hidden" name="next" value="{{ next|default(request.args.get('next', '')) }}">
+            <input type="hidden" name="next" value="{{ next if next and next != 'None' else '' }}">
 
             <!-- Full Name / Username -->
             <div class="input-group mb-3">

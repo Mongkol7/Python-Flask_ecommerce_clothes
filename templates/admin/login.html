@@ -78,7 +78,7 @@
           <form action="" method="POST" id="adminLoginForm">
             <!-- CSRF token -->
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="hidden" name="next" value="{{ request.args.get('next', '') }}">
+            <input type="hidden" name="next" value="{{ request.args.get('next', '') if request.args.get('next') != 'None' else '' }}">
 
             <!-- Email / Username Input -->
             <div class="input-group mb-3">
