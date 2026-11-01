@@ -377,16 +377,25 @@ document.addEventListener('DOMContentLoaded', function () {
   const chartRevenue = statsData.chart_revenue || [];
   const chartCancelled = statsData.chart_cancelled || [];
   const chartOrders = statsData.chart_orders || [];
+  const khrRate = statsData.khr_rate || 4000;
+
+  function formatDualCurrency(val) {
+    if (typeof val === 'undefined' || val === null) return '0 ៛ (≈ $0.00)';
+    const num = Number(val);
+    const khr = Math.round(num).toLocaleString() + ' ៛';
+    const usd = '≈ $' + (num / khrRate).toFixed(2);
+    return khr + ' (' + usd + ')';
+  }
 
   const chartOptions = {
     series: [
       {
-        name: 'Net Revenue ($)',
+        name: 'Net Revenue',
         type: 'area',
         data: chartRevenue,
       },
       {
-        name: 'Cancelled Loss ($)',
+        name: 'Cancelled Loss',
         type: 'line',
         data: chartCancelled,
       },
@@ -435,12 +444,12 @@ document.addEventListener('DOMContentLoaded', function () {
     yaxis: [
       {
         title: {
-          text: 'Revenue ($)',
+          text: 'Revenue & Loss (៛)',
           style: { color: '#0a0a0a', fontWeight: 500, fontSize: '11px' },
         },
         labels: {
           formatter: function (val) {
-            return '$' + val.toFixed(0);
+            return Number(val).toLocaleString() + ' ៛';
           },
           style: {
             colors: '#8a8a8a',
@@ -450,7 +459,7 @@ document.addEventListener('DOMContentLoaded', function () {
       {
         opposite: true,
         title: {
-          text: 'Orders',
+          text: 'Orders Placed',
           style: { color: '#b89d72', fontWeight: 500, fontSize: '11px' },
         },
         labels: {
@@ -481,7 +490,10 @@ document.addEventListener('DOMContentLoaded', function () {
       y: {
         formatter: function (y, { seriesIndex }) {
           if (typeof y !== 'undefined') {
-            return seriesIndex === 0 ? '$' + y.toFixed(2) : y + ' orders';
+            if (seriesIndex === 0 || seriesIndex === 1) {
+              return formatDualCurrency(y);
+            }
+            return y + ' orders';
           }
           return y;
         },

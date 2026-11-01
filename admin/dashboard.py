@@ -113,6 +113,7 @@ def dashboard():
         "chart_revenue": daily_revenue,
         "chart_cancelled": daily_cancelled,
         "chart_orders": daily_orders_count,
+        "khr_rate": getattr(Config, "KHR_RATE", 4000.0),
     }
 
     return render_template(
