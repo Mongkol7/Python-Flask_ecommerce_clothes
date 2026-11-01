@@ -41,7 +41,11 @@ server {
 }
 EOF
 
-echo "=== [3/5] Enabling Nginx Site ==="
+echo "=== [3/5] Setting Static Directory Permissions & Enabling Nginx Site ==="
+# Allow Nginx (www-data) to access static assets in /home/ubuntu
+chmod 755 /home/ubuntu
+chmod -R 755 /home/ubuntu/ecommerce_clothes/static
+
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo rm -f /etc/nginx/sites-enabled/mk7
 sudo ln -s /etc/nginx/sites-available/mk7 /etc/nginx/sites-enabled/mk7
@@ -61,3 +65,4 @@ echo "=========================================================="
 echo "🎉 SUCCESS: MK7 Luxury Store is now running!"
 echo "Open your browser and navigate to: http://$(curl -s http://checkip.amazonaws.com)"
 echo "=========================================================="
+
