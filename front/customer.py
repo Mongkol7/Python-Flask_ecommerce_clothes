@@ -282,7 +282,7 @@ def cancel_order(order_id):
             notif = Notification(
                 user_id=user_id,
                 title="Refund Credited to Balance",
-                message=f"Order #{order.order_number} has been cancelled. ${refund_amount:.2f} has been added to your MK7 Account Balance as store credit.",
+                message=f"Order #{order.order_number} has been cancelled. {int(round(refund_amount)):,} ៛ (≈ ${(refund_amount/Config.KHR_RATE):.2f}) has been added to your MK7 Account Balance as store credit.",
                 category="refund",
                 link=url_for("front_bp.user_profile") + "#wallet",
             )
@@ -300,13 +300,13 @@ def cancel_order(order_id):
             log_activity(
                 action="order_cancelled_by_user",
                 module="orders",
-                description=f"Order #{order.order_number} was cancelled by user within 4 hours. Inventory restocked. ${refund_amount:.2f} refunded to store balance.",
+                description=f"Order #{order.order_number} was cancelled by user within 4 hours. Inventory restocked. {int(round(refund_amount)):,} ៛ refunded to store balance.",
                 user_id=user_id,
             )
         except Exception:
             pass
 
-        flash(f"Order #{order.order_number} has been cancelled successfully. ${refund_amount:.2f} has been refunded to your MK7 Account Balance as store credit. You can use it to purchase any items on this store.", "success")
+        flash(f"Order #{order.order_number} has been cancelled successfully. {int(round(refund_amount)):,} ៛ (≈ ${(refund_amount/Config.KHR_RATE):.2f}) has been refunded to your MK7 Account Balance as store credit. You can use it to purchase any items on this store.", "success")
         return redirect(url_for("front_bp.user_profile") + "#wallet")
 
     elif elapsed > timedelta(hours=4):

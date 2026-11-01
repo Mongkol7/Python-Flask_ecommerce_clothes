@@ -45,13 +45,15 @@ def user_wallet(user_id):
             "created_at": t.created_at.strftime("%Y-%m-%d %H:%M:%S") if t.created_at else "—",
         })
 
+    balance_val = float(user.balance or 0.0)
     return jsonify({
         "success": True,
         "user_id": user.id,
         "username": user.username,
         "email": user.email,
-        "balance": round(float(user.balance or 0.0), 2),
-        "balance_khr": int(round((user.balance or 0.0) * Config.KHR_RATE)),
+        "balance": round(balance_val, 2),
+        "balance_khr": f"{int(round(balance_val)):,} ៛",
+        "balance_usd": f"≈ ${(balance_val / Config.KHR_RATE):.2f}",
         "transactions": tx_data,
     })
 

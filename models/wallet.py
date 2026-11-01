@@ -55,3 +55,4 @@ class Notification(db.Model):
             "is_read": self.is_read,
             "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else None,
         }
+

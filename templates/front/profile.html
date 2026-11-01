@@ -165,8 +165,8 @@
                             <span class="small text-white-50" style="font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase; font-weight: 600;">Store Balance / Return Money</span>
                             <i class="bi bi-wallet2 text-warning fs-5"></i>
                         </div>
-                        <div class="fs-3 fw-bold text-white mb-0">${{ "%.2f"|format(user.balance or 0.0) }}</div>
-                        <div class="small text-white-50 mb-2" style="font-size: 12px;">{{ ((user.balance or 0.0) * 4000)|int }} ៛ KHR</div>
+                        <div class="fs-3 fw-bold text-white mb-0">{{ (user.balance or 0.0)|khr_format }}</div>
+                        <div class="small text-white-50 mb-2" style="font-size: 12px;">{{ (user.balance or 0.0)|usd_format }}</div>
                         <p class="small text-white-50 mb-3" style="font-size: 11px; line-height: 1.4;">
                             Money returned from order cancellations. Automatically ready for your next checkout.
                         </p>
@@ -294,8 +294,8 @@
                             <h3 class="fs-4 fw-bold mb-0">Return Money <em>Ledger</em></h3>
                         </div>
                         <div class="text-end">
-                            <span class="fs-4 fw-bold text-dark">${{ "%.2f"|format(user.balance or 0.0) }}</span>
-                            <div class="small text-muted">{{ ((user.balance or 0.0) * 4000)|int }} ៛ KHR available</div>
+                            <span class="fs-4 fw-bold text-dark">{{ (user.balance or 0.0)|khr_format }}</span>
+                            <div class="small text-muted">{{ (user.balance or 0.0)|usd_format }} available</div>
                         </div>
                     </div>
 
@@ -342,10 +342,11 @@
                                         {% endif %}
                                     </td>
                                     <td class="text-end fw-bold {{ 'text-success' if tx.amount > 0 else 'text-danger' }}">
-                                        {{ '+' if tx.amount > 0 else '' }}${{ "%.2f"|format(tx.amount) }}
+                                        {{ '+' if tx.amount > 0 else '' }}{{ tx.amount|khr_format }}
+                                        <div class="small fw-normal text-muted" style="font-size: 11px;">({{ tx.amount|usd_format }})</div>
                                     </td>
                                     <td class="text-end fw-semibold text-secondary">
-                                        ${{ "%.2f"|format(tx.balance_after) }}
+                                        {{ tx.balance_after|khr_format }}
                                     </td>
                                 </tr>
                                 {% endfor %}
