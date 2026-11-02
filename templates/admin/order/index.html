@@ -261,116 +261,197 @@
 <!-- Order Detail Modal -->
 <div class="modal fade" id="orderDetailModal" tabindex="-1" aria-labelledby="orderDetailModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content modal-content-mk7 shadow-lg">
-      <div class="modal-header modal-header-mk7 d-flex align-items-center justify-content-between">
-        <div class="d-flex align-items-center gap-2">
-          <i class="bi bi-receipt-cutoff fs-5 text-dark"></i>
+    <div class="modal-content modal-content-mk7 shadow-lg border-0" style="border-radius: 14px; overflow: hidden;">
+      <div class="modal-header modal-header-mk7 py-3 px-4 d-flex align-items-center justify-content-between" style="background: #faf8f5; border-bottom: 1px solid var(--border);">
+        <div class="d-flex align-items-center gap-3">
+          <div class="rounded-circle d-flex align-items-center justify-content-center bg-white border shadow-sm" style="width: 44px; height: 44px;">
+            <i class="bi bi-receipt-cutoff fs-5 text-dark"></i>
+          </div>
           <div>
-            <h5 class="modal-title fw-bold mb-0" id="orderDetailModalLabel">
-              Order Breakdown: <span id="modalOrderNumber" class="text-primary font-monospace"></span>
-            </h5>
-            <div class="text-muted small" style="font-size: 11px;">Phnom Penh Local Time (UTC+7)</div>
+            <div class="d-flex align-items-center gap-2">
+              <h5 class="modal-title fw-bold text-dark font-monospace mb-0" id="modalOrderNumber"></h5>
+              <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 rounded-pill" id="btnCopyOrderNum" title="Copy Order Number" style="font-size: 11px;">
+                <i class="bi bi-clipboard me-1"></i>Copy
+              </button>
+            </div>
+            <div class="text-muted small" style="font-size: 11.5px;">
+              <i class="bi bi-clock me-1"></i>Phnom Penh Local Time (UTC+7)
+            </div>
           </div>
         </div>
         <div class="d-flex align-items-center gap-2">
-          <span id="modalStatusBadge" class="badge rounded-pill px-3 py-2 text-capitalize fw-semibold"></span>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <span id="modalStatusBadge" class="badge rounded-pill px-3 py-2 text-capitalize fw-semibold fs-6"></span>
+          <button type="button" class="btn-close ms-2" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
       </div>
       <div class="modal-body modal-body-mk7 p-4">
+
         <!-- Purchase & Cancellation Timestamps Banner -->
-        <div class="card-mk7 p-3 mb-3" style="background: #ffffff; border: 1px solid var(--border);">
-          <div class="row g-3 align-items-center">
-            <div class="col-sm-6">
-              <span class="kicker-tag text-success" style="font-size: 10px;">
-                <i class="bi bi-cart-check-fill me-1"></i>Purchase / Paid Time (Phnom Penh)
-              </span>
-              <div class="fw-bold text-dark fs-6 mt-1" id="modalPurchasedAt">—</div>
-              <div class="text-muted small" style="font-size: 11px;">Verified & stock deducted</div>
-            </div>
-            <div class="col-sm-6" id="modalCancellationBox">
-              <span class="kicker-tag text-danger" style="font-size: 10px;">
-                <i class="bi bi-x-circle-fill me-1"></i>Cancellation Time (Phnom Penh)
-              </span>
-              <div class="fw-bold text-danger fs-6 mt-1" id="modalCancelledAt">—</div>
-              <div class="text-danger small" style="font-size: 11px;">
-                <i class="bi bi-wallet2 me-1"></i>100% refunded to store balance
+        <div class="row g-3 mb-3">
+          <!-- Purchase Time Card -->
+          <div class="col-sm-6">
+            <div class="p-3 rounded h-100" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <i class="bi bi-check-circle-fill text-success fs-6"></i>
+                <span class="text-uppercase fw-bold text-secondary" style="font-size: 10.5px; letter-spacing: 0.5px;">Purchased / Paid Time (Phnom Penh)</span>
               </div>
+              <div class="fs-6 fw-bold text-dark ps-4" id="modalPurchasedAt">—</div>
+              <div class="small text-muted ps-4" style="font-size: 11px;">Verified via NBC Bakong & inventory stock deducted</div>
             </div>
-            <div class="col-sm-6" id="modalActiveGraceBox" style="display: none;">
-              <span class="kicker-tag text-warning" style="font-size: 10px;">
-                <i class="bi bi-hourglass-split me-1"></i>Customer Cancellation Window
-              </span>
-              <div class="fw-bold text-warning fs-6 mt-1">4-Hour Grace Period Active</div>
-              <div class="text-muted small" style="font-size: 11px;">Can be cancelled by user for store credit</div>
+          </div>
+          <!-- Status / Cancellation Card -->
+          <div class="col-sm-6">
+            <!-- If Cancelled -->
+            <div id="modalCancellationBox" class="p-3 rounded h-100" style="background: #fef2f2; border: 1px solid #fee2e2;">
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <i class="bi bi-x-circle-fill text-danger fs-6"></i>
+                <span class="text-uppercase fw-bold text-danger" style="font-size: 10.5px; letter-spacing: 0.5px;">Cancellation Time (Phnom Penh)</span>
+              </div>
+              <div class="fs-6 fw-bold text-danger ps-4" id="modalCancelledAt">—</div>
+              <div class="small text-danger ps-4" style="font-size: 11px;"><i class="bi bi-wallet2 me-1"></i>100% credited to Store Balance & items restocked</div>
+            </div>
+            <!-- If Pending Grace -->
+            <div id="modalActiveGraceBox" class="p-3 rounded h-100" style="display: none; background: #fffdf5; border: 1px solid #fef3c7;">
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <i class="bi bi-hourglass-split text-warning fs-6"></i>
+                <span class="text-uppercase fw-bold text-warning" style="font-size: 10.5px; letter-spacing: 0.5px;">Customer Grace Period</span>
+              </div>
+              <div class="fs-6 fw-bold text-dark ps-4">4-Hour Cancellation Window Active</div>
+              <div class="small text-muted ps-4" style="font-size: 11px;">Customer can cancel directly for store credit refund</div>
+            </div>
+            <!-- If Confirmed / Delivered -->
+            <div id="modalFulfillmentBox" class="p-3 rounded h-100" style="background: #f0fdf4; border: 1px solid #dcfce7;">
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <i class="bi bi-shield-check text-success fs-6"></i>
+                <span class="text-uppercase fw-bold text-success" style="font-size: 10.5px; letter-spacing: 0.5px;">Order Fulfillment</span>
+              </div>
+              <div class="fs-6 fw-bold text-dark ps-4">Order Confirmed & Locked</div>
+              <div class="small text-muted ps-4" style="font-size: 11px;">Exceeded 4h grace window & dispatched for delivery</div>
             </div>
           </div>
         </div>
 
-        <!-- Customer & Delivery Info Row -->
-        <div class="row g-3 mb-3 p-3 rounded" style="background: #faf8f5; border: 1px solid var(--border);">
-          <div class="col-md-6">
-            <span class="kicker-tag" style="font-size: 10px;">Customer Profile</span>
-            <h6 class="fw-bold mb-1" id="modalCustomerName"></h6>
-            <div class="small text-secondary" id="modalCustomerEmail"></div>
-            <div class="small text-secondary" id="modalCustomerPhone"></div>
-            <div class="mt-2" id="modalUserAccountType"></div>
+        <!-- Customer & Shipping & Gateway Details -->
+        <div class="row g-3 mb-3">
+          <!-- Left: Customer Profile & Delivery -->
+          <div class="col-md-7">
+            <div class="p-3 rounded h-100" style="background: #faf8f5; border: 1px solid var(--border);">
+              <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                <span class="kicker-tag text-dark mb-0" style="font-size: 11px;">
+                  <i class="bi bi-person-circle me-1"></i>Customer & Shipping Details
+                </span>
+                <span id="modalUserAccountType"></span>
+              </div>
+              <div class="row g-2">
+                <div class="col-sm-6">
+                  <div class="text-muted small" style="font-size: 11px;">Recipient Name:</div>
+                  <div class="fw-bold text-dark fs-6" id="modalCustomerName"></div>
+                  <div class="text-muted small mt-2" style="font-size: 11px;">Contact Information:</div>
+                  <div class="small text-dark">
+                    <i class="bi bi-telephone text-muted me-1"></i><span id="modalCustomerPhone"></span>
+                  </div>
+                  <div class="small text-dark">
+                    <i class="bi bi-envelope text-muted me-1"></i><span id="modalCustomerEmail"></span>
+                  </div>
+                </div>
+                <div class="col-sm-6">
+                  <div class="text-muted small" style="font-size: 11px;">Delivery Destination:</div>
+                  <div class="fw-semibold text-dark small">
+                    <i class="bi bi-geo-alt text-danger me-1"></i><span id="modalShippingAddress"></span>
+                  </div>
+                  <div class="text-muted small mt-1 ps-3" id="modalCityZip"></div>
+                  <div class="text-muted small ps-3">Cambodia</div>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="col-md-6">
-            <span class="kicker-tag" style="font-size: 10px;">Delivery Destination & Gateway</span>
-            <div class="small fw-semibold text-dark" id="modalShippingAddress"></div>
-            <div class="small text-secondary mt-1">Payment Method: <span id="modalPaymentMethod" class="badge bg-light text-dark font-monospace text-uppercase"></span></div>
-            <div class="small text-muted mt-1" id="modalNotes"></div>
+
+          <!-- Right: Payment Gateway & Technical Info -->
+          <div class="col-md-5">
+            <div class="p-3 rounded h-100" style="background: #ffffff; border: 1px solid var(--border);">
+              <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                <span class="kicker-tag text-dark mb-0" style="font-size: 11px;">
+                  <i class="bi bi-credit-card me-1"></i>Payment Gateway
+                </span>
+                <span id="modalPaymentMethodBadge" class="badge bg-light text-dark border font-monospace" style="font-size: 10px;"></span>
+              </div>
+              <div class="mb-2">
+                <div class="text-muted small" style="font-size: 11px;">Gateway Provider:</div>
+                <div class="fw-bold text-dark small" id="modalGatewayName"></div>
+              </div>
+              <div class="mb-2" id="modalMd5Row">
+                <div class="text-muted small" style="font-size: 11px;">Bakong Transaction MD5:</div>
+                <code class="small text-break bg-light p-1 rounded border d-block font-monospace" id="modalKhqrMd5" style="font-size: 10.5px;"></code>
+              </div>
+              <div id="modalAuditRow">
+                <div class="text-muted small" style="font-size: 11px;">Gateway Audit:</div>
+                <div class="small text-success fw-semibold" id="modalAuditNote" style="font-size: 11px;"></div>
+              </div>
+            </div>
           </div>
+        </div>
+
+        <!-- Customer Special Instructions Box (Prominently displayed) -->
+        <div id="modalCustomerNoteBox" class="p-3 mb-3 rounded" style="background: #fffdf5; border-left: 4px solid #b89d72; border-top: 1px solid #faeecd; border-right: 1px solid #faeecd; border-bottom: 1px solid #faeecd;">
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <i class="bi bi-chat-quote-fill" style="color: #b89d72;"></i>
+            <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">Customer Instructions / Special Note:</span>
+          </div>
+          <div class="text-dark fw-semibold ps-4" id="modalCustomerNoteText" style="font-size: 13.5px; white-space: pre-wrap;"></div>
         </div>
 
         <!-- Payment Breakdown Card (Especially for Split Payment) -->
-        <div class="row g-2 mb-3 p-3 rounded bg-light border" id="modalPaymentBreakdownRow">
-          <div class="col-sm-4">
-            <span class="text-muted small d-block">Subtotal:</span>
-            <span class="fw-semibold text-dark" id="modalSubtotal"></span>
-          </div>
-          <div class="col-sm-4" id="modalBalanceAppliedCol">
-            <span class="text-muted small d-block">Store Balance Applied:</span>
-            <span class="fw-bold text-success" id="modalBalanceApplied">0 ៛</span>
-          </div>
-          <div class="col-sm-4" id="modalRemainingDueCol">
-            <span class="text-muted small d-block">Paid via Bakong KHQR:</span>
-            <span class="fw-bold text-primary" id="modalRemainingDue"></span>
+        <div class="p-3 mb-3 rounded" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+          <div class="row g-2 align-items-center text-center text-sm-start">
+            <div class="col-sm-3 col-6 border-end">
+              <span class="text-muted small d-block" style="font-size: 11px;">Order Subtotal</span>
+              <span class="fw-semibold text-dark fs-6" id="modalSubtotal"></span>
+            </div>
+            <div class="col-sm-3 col-6 border-end" id="modalBalanceAppliedCol">
+              <span class="text-muted small d-block" style="font-size: 11px;">Store Balance Applied</span>
+              <span class="fw-bold text-success fs-6" id="modalBalanceApplied">0 ៛</span>
+            </div>
+            <div class="col-sm-3 col-6 border-end" id="modalRemainingDueCol">
+              <span class="text-muted small d-block" style="font-size: 11px;">Paid via Bakong KHQR</span>
+              <span class="fw-bold text-primary fs-6" id="modalRemainingDue"></span>
+            </div>
+            <div class="col-sm-3 col-6">
+              <span class="text-muted small d-block" style="font-size: 11px;">Grand Total (Paid)</span>
+              <span class="fw-bold text-dark fs-5" id="modalOrderTotal"></span>
+            </div>
           </div>
         </div>
 
         <!-- Ordered Items Table -->
         <div class="d-flex align-items-center justify-content-between mb-2">
-          <h6 class="fw-bold mb-0">Purchased Items & Inventory Impact</h6>
-          <span class="text-muted small" id="modalItemsCount"></span>
+          <span class="kicker-tag text-dark mb-0" style="font-size: 11px;">
+            <i class="bi bi-bag-check me-1"></i>Purchased Items (<span id="modalItemsCount"></span>)
+          </span>
+          <span class="text-muted small" style="font-size: 11px;">Warehouse inventory automatically synced</span>
         </div>
-        <div class="table-responsive mb-0">
-          <table class="table table-bordered table-sm align-middle">
-            <thead class="table-light small">
+        <div class="table-responsive">
+          <table class="table table-bordered table-sm align-middle mb-0">
+            <thead class="table-light small text-uppercase" style="font-size: 10.5px;">
               <tr>
                 <th style="width: 50px;">Item</th>
                 <th>Product Description</th>
-                <th style="width: 110px;">Price</th>
+                <th style="width: 120px;">Unit Price</th>
                 <th style="width: 70px;" class="text-center">Qty</th>
-                <th style="width: 110px;" class="text-center">Current Stock</th>
-                <th style="width: 120px;" class="text-end">Subtotal</th>
+                <th style="width: 120px;" class="text-center">Current Stock</th>
+                <th style="width: 130px;" class="text-end">Subtotal</th>
               </tr>
             </thead>
             <tbody id="modalItemsBody">
               <!-- Rendered dynamically -->
             </tbody>
-            <tfoot>
-              <tr>
-                <th colspan="5" class="text-end fw-bold">Grand Total:</th>
-                <th class="text-end fw-bold text-primary fs-6" id="modalOrderTotal"></th>
-              </tr>
-            </tfoot>
           </table>
         </div>
       </div>
-      <div class="modal-footer modal-footer-mk7">
-        <button type="button" class="btn-pill-outline" data-bs-dismiss="modal">Close</button>
+      <div class="modal-footer modal-footer-mk7 bg-light py-2 px-4 d-flex justify-content-between align-items-center">
+        <span class="text-muted small" style="font-size: 11.5px;">
+          <i class="bi bi-shield-check text-success me-1"></i>Payment verified with NBC Bakong Open API
+        </span>
+        <button type="button" class="btn-pill-outline py-1 px-4" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
@@ -422,20 +503,63 @@
         axios.get('/admin/orders/' + orderId)
           .then(res => {
             const o = res.data.order;
+
+            // Order Number & Quick Copy
             document.getElementById('modalOrderNumber').textContent = o.order_number;
+            const copyBtn = document.getElementById('btnCopyOrderNum');
+            if (copyBtn) {
+              copyBtn.onclick = function() {
+                navigator.clipboard.writeText(o.order_number);
+                copyBtn.innerHTML = '<i class="bi bi-check2 text-success me-1"></i>Copied';
+                setTimeout(() => { copyBtn.innerHTML = '<i class="bi bi-clipboard me-1"></i>Copy'; }, 1500);
+              };
+            }
+
+            // Customer Profile
             document.getElementById('modalCustomerName').textContent = o.customer_name;
             document.getElementById('modalCustomerEmail').textContent = o.customer_email;
-            document.getElementById('modalCustomerPhone').textContent = o.customer_phone || 'No phone';
-            document.getElementById('modalShippingAddress').textContent = `${o.shipping_address || 'No address'}, ${o.city || ''} ${o.zip_code || ''}`;
-            document.getElementById('modalPaymentMethod').textContent = o.payment_method;
-            document.getElementById('modalNotes').textContent = o.notes ? `Note: ${o.notes}` : '';
+            document.getElementById('modalCustomerPhone').textContent = o.customer_phone || 'No phone provided';
 
             // User account type badge
             const userTypeEl = document.getElementById('modalUserAccountType');
             if (o.user_id) {
-              userTypeEl.innerHTML = `<span class="badge bg-dark-subtle text-dark border"><i class="bi bi-person-check me-1"></i>Registered Customer (ID: #${o.user_id})</span>`;
+              userTypeEl.innerHTML = `<span class="badge bg-dark text-white px-2 py-1"><i class="bi bi-person-check me-1"></i>Registered User (ID: #${o.user_id})</span>`;
             } else {
-              userTypeEl.innerHTML = `<span class="badge bg-secondary-subtle text-secondary border"><i class="bi bi-person me-1"></i>Guest Checkout</span>`;
+              userTypeEl.innerHTML = `<span class="badge bg-secondary text-white px-2 py-1"><i class="bi bi-person me-1"></i>Guest</span>`;
+            }
+
+            // Shipping destination
+            document.getElementById('modalShippingAddress').textContent = o.shipping_address || 'No street address provided';
+            document.getElementById('modalCityZip').textContent = `${o.city || ''} ${o.zip_code || ''}`.trim();
+
+            // Payment Gateway info
+            document.getElementById('modalPaymentMethodBadge').textContent = (o.payment_method || 'bakong_khqr').toUpperCase();
+            document.getElementById('modalGatewayName').textContent = o.gateway_name || 'Bakong KHQR (NBC)';
+
+            const md5Row = document.getElementById('modalMd5Row');
+            if (o.khqr_md5) {
+              md5Row.style.display = 'block';
+              document.getElementById('modalKhqrMd5').textContent = o.khqr_md5;
+            } else {
+              md5Row.style.display = 'none';
+            }
+
+            const auditRow = document.getElementById('modalAuditRow');
+            if (o.audit_note) {
+              auditRow.style.display = 'block';
+              document.getElementById('modalAuditNote').textContent = o.audit_note;
+            } else {
+              auditRow.style.display = 'none';
+            }
+
+            // Customer Special Instructions Note
+            const noteBox = document.getElementById('modalCustomerNoteBox');
+            const noteText = document.getElementById('modalCustomerNoteText');
+            if (o.customer_note && o.customer_note.trim()) {
+              noteBox.style.display = 'block';
+              noteText.textContent = `"${o.customer_note.trim()}"`;
+            } else {
+              noteBox.style.display = 'none';
             }
 
             // Timestamps: Purchased & Cancelled in Phnom Penh Time (UTC+7)
@@ -443,16 +567,21 @@
 
             const cancelBox = document.getElementById('modalCancellationBox');
             const graceBox = document.getElementById('modalActiveGraceBox');
+            const fulfillBox = document.getElementById('modalFulfillmentBox');
+
             if (o.status === 'cancelled') {
               cancelBox.style.display = 'block';
               graceBox.style.display = 'none';
+              fulfillBox.style.display = 'none';
               document.getElementById('modalCancelledAt').textContent = o.cancelled_at_pp || o.created_at_pp || 'N/A';
             } else if (o.status === 'pending') {
               cancelBox.style.display = 'none';
               graceBox.style.display = 'block';
+              fulfillBox.style.display = 'none';
             } else {
               cancelBox.style.display = 'none';
               graceBox.style.display = 'none';
+              fulfillBox.style.display = 'block';
             }
 
             // Status Badge in Modal Header
@@ -466,20 +595,20 @@
             const totalNum = parseFloat(o.total) || 0;
             const remainingDue = parseFloat(o.remaining_due || Math.max(0, totalNum - balApplied));
 
-            document.getElementById('modalSubtotal').innerHTML = `${Math.round(subtotalNum).toLocaleString()} ៛ <span class="text-muted small fw-normal">(≈ $${(subtotalNum / 4000).toFixed(2)})</span>`;
+            document.getElementById('modalSubtotal').innerHTML = `${Math.round(subtotalNum).toLocaleString()} ៛ <span class="text-muted small fw-normal d-block">(≈ $${(subtotalNum / 4000).toFixed(2)})</span>`;
 
             const balCol = document.getElementById('modalBalanceAppliedCol');
             const remCol = document.getElementById('modalRemainingDueCol');
             if (balApplied > 0) {
               balCol.style.display = 'block';
-              document.getElementById('modalBalanceApplied').innerHTML = `-${Math.round(balApplied).toLocaleString()} ៛ <span class="text-muted small fw-normal">(≈ $${(balApplied / 4000).toFixed(2)})</span>`;
-              document.getElementById('modalRemainingDue').innerHTML = `${Math.round(remainingDue).toLocaleString()} ៛ <span class="text-muted small fw-normal">(≈ $${(remainingDue / 4000).toFixed(2)})</span>`;
+              document.getElementById('modalBalanceApplied').innerHTML = `-${Math.round(balApplied).toLocaleString()} ៛ <span class="text-muted small fw-normal d-block">(≈ $${(balApplied / 4000).toFixed(2)})</span>`;
+              document.getElementById('modalRemainingDue').innerHTML = `${Math.round(remainingDue).toLocaleString()} ៛ <span class="text-muted small fw-normal d-block">(≈ $${(remainingDue / 4000).toFixed(2)})</span>`;
             } else {
               balCol.style.display = 'none';
-              document.getElementById('modalRemainingDue').innerHTML = `${Math.round(totalNum).toLocaleString()} ៛ <span class="text-muted small fw-normal">(≈ $${(totalNum / 4000).toFixed(2)})</span>`;
+              document.getElementById('modalRemainingDue').innerHTML = `${Math.round(totalNum).toLocaleString()} ៛ <span class="text-muted small fw-normal d-block">(≈ $${(totalNum / 4000).toFixed(2)})</span>`;
             }
 
-            document.getElementById('modalOrderTotal').innerHTML = `${Math.round(totalNum).toLocaleString()} ៛ <span class="text-muted small fw-normal ms-1">(≈ $${(totalNum / 4000).toFixed(2)})</span>`;
+            document.getElementById('modalOrderTotal').innerHTML = `${Math.round(totalNum).toLocaleString()} ៛ <span class="text-muted small fw-normal d-block" style="font-size: 13px;">(≈ $${(totalNum / 4000).toFixed(2)} USD)</span>`;
 
             // Items Count
             document.getElementById('modalItemsCount').textContent = `${o.items.length} item(s)`;
@@ -493,21 +622,21 @@
               const tr = document.createElement('tr');
               tr.innerHTML = `
                 <td>
-                  <img src="${item.product_image || '/static/image/product/Man_Brown01.jpg'}" class="rounded" width="36" height="44" style="object-fit:cover;">
+                  <img src="${item.product_image || '/static/image/product/Man_Brown01.jpg'}" class="rounded shadow-sm" width="38" height="46" style="object-fit:cover; border: 1px solid var(--border);">
                 </td>
                 <td>
                   <div class="fw-semibold text-dark">${item.product_title}</div>
-                  <div class="text-muted small">Product ID: #${item.product_id}</div>
+                  <div class="text-muted small">ID: #${item.product_id}</div>
                 </td>
                 <td>
                   <div>${Math.round(itemPrice).toLocaleString()} ៛</div>
                   <div class="text-muted small">≈ $${(itemPrice / 4000).toFixed(2)}</div>
                 </td>
                 <td class="text-center">
-                  <span class="badge bg-secondary">${item.quantity}</span>
+                  <span class="badge bg-secondary font-monospace px-2 py-1">${item.quantity}</span>
                 </td>
                 <td class="text-center">
-                  <span class="badge bg-light text-dark border" title="Current live warehouse stock">${stock} units</span>
+                  <span class="badge bg-light text-dark border px-2 py-1" title="Current live warehouse stock">${stock} in stock</span>
                 </td>
                 <td class="text-end fw-bold">
                   <div>${Math.round(itemSub).toLocaleString()} ៛</div>

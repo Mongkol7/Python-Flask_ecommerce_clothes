@@ -54,6 +54,56 @@ class Order(db.Model):
             return self.created_at
         return None
 
+    def parse_notes(self):
+        """Parses the structured/concatenated order notes into clean distinct components."""
+        raw = self.notes or ""
+        customer_lines = []
+        gateway = (self.payment_method or "").replace("_", " ").title()
+        md5_hash = ""
+        bill_ref = ""
+        audit_note = ""
+
+        if not raw.strip():
+            return {
+                "customer_note": "",
+                "gateway": gateway,
+                "md5": "",
+                "bill": bill_ref,
+                "audit": "",
+                "raw": "",
+            }
+
+        lines = [line.strip() for line in raw.split("\n") if line.strip()]
+        for line in lines:
+            if "Payment Gateway:" in line or "Bill:" in line or "MD5:" in line:
+                parts = [p.strip() for p in line.split("|")]
+                for p in parts:
+                    if p.startswith("Payment Gateway:"):
+                        gw_val = p.replace("Payment Gateway:", "").strip()
+                        if gw_val:
+                            gateway = gw_val
+                    elif p.startswith("Bill:"):
+                        bill_ref = p.replace("Bill:", "").strip()
+                    elif p.startswith("MD5:"):
+                        md5_hash = p.replace("MD5:", "").strip()
+            elif line.startswith("Customer Note:"):
+                val = line.replace("Customer Note:", "").strip()
+                if val:
+                    customer_lines.append(val)
+            elif line.startswith("[Confirmed]:") or line.startswith("[Verification]:"):
+                audit_note = line
+            else:
+                customer_lines.append(line)
+
+        return {
+            "customer_note": "\n".join(customer_lines).strip(),
+            "gateway": gateway,
+            "md5": md5_hash,
+            "bill": bill_ref,
+            "audit": audit_note,
+            "raw": raw,
+        }
+
     def to_dict(self):
         from datetime import timedelta
         paid_dt = self.get_paid_at()
@@ -67,6 +117,8 @@ class Order(db.Model):
         bal_applied = float(getattr(self, "balance_applied", 0.0) or 0.0)
         tot = float(self.total or 0.0)
         rem_due = max(0.0, tot - bal_applied)
+
+        parsed = self.parse_notes()
 
         items_data = []
         for item in self.items:
@@ -94,6 +146,11 @@ class Order(db.Model):
             "remaining_due": rem_due,
             "status": self.status,
             "notes": self.notes,
+            "customer_note": parsed["customer_note"],
+            "gateway_name": parsed["gateway"],
+            "bill_ref": parsed["bill"] or self.order_number,
+            "khqr_md5": parsed["md5"],
+            "audit_note": parsed["audit"],
             "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else None,
             "created_at_pp": created_pp,
             "paid_at_pp": paid_pp,
