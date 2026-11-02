@@ -439,6 +439,11 @@ em {
   color: #0a0a0a !important;
 }
 
+.stat-card-badge.badge-danger {
+  background: #fdf2f2 !important;
+  color: #dc3545 !important;
+}
+
 /* ==========================================================================
    Editorial Data Tables (High Contrast)
    ========================================================================== */

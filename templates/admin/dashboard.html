@@ -42,14 +42,17 @@
     <div class="stat-card-luxury">
       <span class="stat-card-kicker">Orders & Fulfillment</span>
       <div class="stat-card-value">{{ stats.total_orders }}</div>
+      <div class="text-muted small mb-2">{{ stats.confirmed_orders }} confirmed &bull; <span class="{% if stats.cancelled_orders > 0 %}text-danger fw-semibold{% endif %}">{{ stats.cancelled_orders }} cancelled</span></div>
       <div class="stat-card-icon-bubble">
         <i class="bi bi-bag-check"></i>
       </div>
-      <div>
-        <span class="stat-card-badge {% if stats.pending_orders > 0 %}badge-up{% else %}badge-neutral{% endif %}">
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-1">
+        <span class="stat-card-badge {% if stats.pending_orders > 0 %}badge-up{% else %}badge-neutral{% endif %}" title="Pending Orders (Within 4-hour grace period)">
           {{ stats.pending_orders }} Pending
         </span>
-        <span class="text-muted ms-1" style="font-size: 12px;">{{ stats.confirmed_orders }} confirmed</span>
+        <span class="stat-card-badge {% if stats.cancelled_orders > 0 %}badge-danger{% else %}badge-neutral{% endif %}" title="Cancelled Orders">
+          <i class="bi bi-x-circle{% if stats.cancelled_orders > 0 %}-fill{% endif %}"></i> {{ stats.cancelled_orders }} Cancelled
+        </span>
       </div>
     </div>
   </div>
