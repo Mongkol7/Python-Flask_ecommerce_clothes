@@ -208,9 +208,9 @@
                                 </span>
                                 {% endif %}
                             </div>
-                            <div class="payment-total">
-                                {{ remaining_due|khr_format }}
-                                <span class="text-muted small fw-normal d-block" style="font-size: 0.82rem;">({{ remaining_due|usd_format }})</span>
+                            <div class="payment-total d-inline-flex align-items-center gap-2">
+                                <span class="fw-semibold text-white">{{ remaining_due|khr_format }}</span>
+                                <span class="payment-usd-pill" style="color: #fbbf24 !important; font-size: 0.85rem; font-weight: 600;">({{ remaining_due|usd_format }})</span>
                             </div>
                         </div>
                     </div>
@@ -292,7 +292,7 @@
                 </div>
                 {% if remaining_due > 0 %}
                 <button type="submit" id="checkoutSubmitBtn" class="btn-pill-dark w-100 justify-content-center py-3">
-                    <i class="bi bi-check2-circle me-2"></i> Confirm Payment &amp; Place Order ({{ remaining_due|khr_format }} &bull; {{ remaining_due|usd_format }})
+                    <i class="bi bi-check2-circle me-2"></i> Confirm Payment &amp; Place Order ({{ remaining_due|khr_format }} &bull; <span style="color: #fbbf24; font-weight: 600;">{{ remaining_due|usd_format }}</span>)
                 </button>
                 {% else %}
                 <button type="submit" id="checkoutSubmitBtn" class="btn-pill-dark w-100 justify-content-center py-3" style="background: #15803d; border-color: #15803d;">

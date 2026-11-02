@@ -1,4 +1,4 @@
-﻿:root {
+:root {
     --glass-bg: rgba(255,255,255,0.55);
     --glass-border: rgba(255,255,255,0.7);
     --glass-shadow: 0 8px 32px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.9);
@@ -195,12 +195,18 @@
   .payment-total {
     display: inline-flex;
     align-items: center;
+    gap: 8px;
     min-height: 38px;
     padding: 8px 18px;
     border-radius: var(--radius-pill);
     background: var(--black);
     color: white;
     font-weight: 500;
+  }
+  .payment-total .payment-usd-pill {
+    color: #fbbf24 !important;
+    font-size: 0.85rem;
+    font-weight: 600;
   }
   .success-card,
   .empty-checkout {
