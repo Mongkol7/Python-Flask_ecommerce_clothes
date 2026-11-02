@@ -308,6 +308,7 @@ def format_order_cancellation_for_telegram(order, user=None, reason=None):
     payment_method = str(getattr(order, "payment_method", "N/A")).replace("_", " ").title()
     order_num = getattr(order, "order_number", "N/A")
     total_amount = float(getattr(order, "total", 0.0))
+    usd_cancel_total = total_amount / Config.KHR_RATE
 
     lines = [
         "🚫 <b>[ORDER CANCELLED] Customer Order Cancellation</b>",
@@ -315,7 +316,7 @@ def format_order_cancellation_for_telegram(order, user=None, reason=None):
         "📋 <b>Order Details:</b>",
         f"• <b>Order Number:</b> <code>{html.escape(str(order_num))}</code>",
         "• <b>Status:</b> ❌ <b>Cancelled</b>",
-        f"• <b>Total Amount:</b> <b>${total_amount:.2f}</b>",
+        f"• <b>Total Amount:</b> <b>{int(round(total_amount)):,} ៛ KHR</b> (≈ ${usd_cancel_total:.2f} USD)",
         f"• <b>Payment Method:</b> {html.escape(payment_method)}",
         "",
         "👤 <b>Customer Information:</b>",
@@ -337,7 +338,8 @@ def format_order_cancellation_for_telegram(order, user=None, reason=None):
             title = html.escape(str(getattr(item, "product_title", "Product")))
             qty = getattr(item, "quantity", 1)
             subtotal = float(getattr(item, "subtotal", 0.0))
-            lines.append(f"• {title} &times; {qty} (${subtotal:.2f}) &rarr; <i>Restocked</i>")
+            usd_sub = subtotal / Config.KHR_RATE
+            lines.append(f"• {title} &times; {qty} ({int(round(subtotal)):,} ៛ / ≈ ${usd_sub:.2f}) &rarr; <i>Restocked</i>")
     else:
         lines.append("• <i>Inventory stock restored to catalog</i>")
 

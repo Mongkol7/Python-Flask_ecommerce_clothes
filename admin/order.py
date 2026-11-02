@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from flask import abort, jsonify, redirect, render_template, request, url_for, flash
+from config import Config
 from extensions import db, limiter
 from models.order import Order, OrderItem
 from models.product import Product
@@ -236,10 +237,11 @@ def order_add():
 
         # Audit log
         try:
+            usd_new_order_total = new_order.total / Config.KHR_RATE
             log_activity(
                 action="admin_order_create",
                 module="orders",
-                description=f"Admin created Order #{new_order.order_number} for {customer_name} (${new_order.total:.2f}). Inventory deducted.",
+                description=f"Admin created Order #{new_order.order_number} for {customer_name} ({int(round(new_order.total)):,} ៛ / ≈ ${usd_new_order_total:.2f}). Inventory deducted.",
             )
         except Exception:
             pass

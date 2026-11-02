@@ -190,13 +190,16 @@ def payment():
             return redirect(url_for("front_bp.checkout", use_balance="1" if use_balance else "0"))
 
         payment_method = "split_wallet_khqr" if balance_to_apply > 0 else "bakong_khqr"
-        payment_status_text = f"Verified Paid via Bakong KHQR (${remaining_due:.2f})"
+        usd_remaining = remaining_due / Config.KHR_RATE
+        payment_status_text = f"Verified Paid via Bakong KHQR ({int(round(remaining_due)):,} ៛ KHR / ≈ ${usd_remaining:.2f} USD)"
         if balance_to_apply > 0:
-            payment_status_text += f" + Store Balance (${balance_to_apply:.2f})"
+            usd_bal = balance_to_apply / Config.KHR_RATE
+            payment_status_text += f" + Store Balance ({int(round(balance_to_apply)):,} ៛ KHR / ≈ ${usd_bal:.2f} USD)"
     else:
         # 100% paid by user's store balance
         payment_method = "wallet_balance"
-        payment_status_text = f"100% Paid with MK7 Store Balance (${server_total:.2f})"
+        usd_tot = server_total / Config.KHR_RATE
+        payment_status_text = f"100% Paid with MK7 Store Balance ({int(round(server_total)):,} ៛ KHR / ≈ ${usd_tot:.2f} USD)"
 
     # 4. Payment is verified! Deduct Store Balance if applied
     if balance_to_apply > 0 and user_obj:
@@ -215,7 +218,8 @@ def payment():
     if khqr_md5 and remaining_due > 0:
         order_notes += f" | MD5: {khqr_md5}"
     if balance_to_apply > 0:
-        order_notes += f" | Store Balance Applied: ${balance_to_apply:.2f}"
+        usd_bal = balance_to_apply / Config.KHR_RATE
+        order_notes += f" | Store Balance Applied: {int(round(balance_to_apply)):,} ៛ (≈ ${usd_bal:.2f})"
     if note:
         order_notes += f"\nCustomer Note: {note}"
 
@@ -263,10 +267,11 @@ def payment():
 
     # 7. Log order placement in ActivityLog
     try:
+        usd_ord_total = db_order.total / Config.KHR_RATE
         log_activity(
             action="order_placed",
             module="orders",
-            description=f"Order #{db_order.order_number} confirmed & placed by {db_order.customer_name} (${db_order.total:.2f}). Inventory deducted.",
+            description=f"Order #{db_order.order_number} confirmed & placed by {db_order.customer_name} ({int(round(db_order.total)):,} ៛ / ≈ ${usd_ord_total:.2f}). Inventory deducted.",
             record_id=db_order.id,
             user_id=user_id,
         )
