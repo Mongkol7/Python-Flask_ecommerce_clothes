@@ -17,6 +17,7 @@ from helpers import (
     log_activity,
 )
 from werkzeug.middleware.proxy_fix import ProxyFix
+from werkzeug.exceptions import HTTPException
 from front import front_bp
 from admin import admin_bp
 from api import api_bp
@@ -196,7 +197,7 @@ def inject_current_user():
     return dict(current_admin=current_admin, current_user=current_admin)
 
 
-# Test Routes for HTTP 500 & HTTP 400 using real errors
+# Test Routes for HTTP 500, HTTP 429 & HTTP 400 using real errors
 @app.route("/test500")
 def test_500():
     # Real Python runtime error: ZeroDivisionError (division by zero)
@@ -207,6 +208,18 @@ def test_500():
 def api_test_500():
     # Real Python runtime error: ZeroDivisionError (division by zero)
     raise ZeroDivisionError("division by zero")
+
+
+@app.route("/test429")
+def test_429():
+    from flask import abort
+    abort(429, description="Too many requests. Rate limit enforcement active for your IP address.")
+
+
+@app.route("/api/test429")
+def api_test_429():
+    from flask import abort
+    abort(429, description="Too many requests. Rate limit enforcement active for your IP address.")
 
 
 @app.route("/test400")
@@ -224,71 +237,84 @@ def api_test_400():
 # Error Handlers
 @app.errorhandler(429)
 def ratelimit_handler(e):
-    is_login_route = (
-        request.path in ("/login", "/user/login", "/admin/login")
-        or (request.endpoint and "login" in request.endpoint)
-    )
-    is_signup_route = (
-        request.path in ("/register", "/signup", "/user/register", "/user/signup")
-        or (request.endpoint and ("register" in request.endpoint or "signup" in request.endpoint))
-    )
+    try:
+        is_login_route = (
+            request.path in ("/login", "/user/login", "/admin/login")
+            or (request.endpoint and "login" in request.endpoint)
+        )
+        is_signup_route = (
+            request.path in ("/register", "/signup", "/user/register", "/user/signup")
+            or (request.endpoint and ("register" in request.endpoint or "signup" in request.endpoint))
+        )
 
-    # Record separated temporary bans with timer preservation
-    if is_login_route:
-        record_login_ban(60)
-    elif is_signup_route:
-        record_signup_ban(60)
+        # Record separated temporary bans with timer preservation
+        if is_login_route:
+            record_login_ban(60)
+        elif is_signup_route:
+            record_signup_ban(60)
+    except Exception:
+        pass
 
-    send_telegram_alert(e)
+    try:
+        send_telegram_alert(e)
+    except Exception as ex:
+        print(f"[Telegram Alert Error]: {ex}")
+
     client_ip = get_client_public_ip()
     err_msg = str(e.description if hasattr(e, "description") else e)
 
-    if is_login_route:
-        rem_ban = is_ip_login_banned()
-    elif is_signup_route:
-        rem_ban = is_ip_signup_banned()
-    else:
-        rem_ban = max(is_ip_login_banned(), is_ip_signup_banned())
+    try:
+        if is_login_route:
+            rem_ban = is_ip_login_banned()
+        elif is_signup_route:
+            rem_ban = is_ip_signup_banned()
+        else:
+            rem_ban = max(is_ip_login_banned(), is_ip_signup_banned())
+    except Exception:
+        rem_ban = 60
 
     retry_after = rem_ban if rem_ban > 0 else 60
 
-    # Save Rate Limit Log into database (Task requirement #2: rate limit log for IP or user id)
-    user_id = session.get("user_id") if session else None
-    username = session.get("username") if session else None
-    role = session.get("role") if session else None
+    # Save Rate Limit Log into database
+    try:
+        user_id = session.get("user_id") if session else None
+        username = session.get("username") if session else None
+        role = session.get("role") if session else None
 
-    if user_id:
-        action_name = "USER_RATE_LIMIT"
-        module_name = "UserRateLimit"
-        desc = f"User '{username}' (ID: {user_id}, Role: {role}) exceeded activity rate limit on {request.method} {request.path}: {err_msg}"
-    else:
-        action_name = "IP_RATE_LIMIT"
-        module_name = "IpRateLimit"
-        desc = f"IP '{client_ip}' exceeded rate limit on {request.method} {request.path}: {err_msg}"
+        if user_id:
+            action_name = "USER_RATE_LIMIT"
+            module_name = "UserRateLimit"
+            desc = f"User '{username}' (ID: {user_id}, Role: {role}) exceeded activity rate limit on {request.method} {request.path}: {err_msg}"
+        else:
+            action_name = "IP_RATE_LIMIT"
+            module_name = "IpRateLimit"
+            desc = f"IP '{client_ip}' exceeded rate limit on {request.method} {request.path}: {err_msg}"
 
-    rate_limit_err_json = {
-        "status": 429,
-        "error": "Rate limit exceeded",
-        "limit_type": "user_id" if user_id else "ip",
-        "user_id": user_id,
-        "username": username,
-        "role": role,
-        "description": err_msg,
-        "ip": client_ip,
-        "endpoint": request.endpoint,
-        "path": request.path,
-        "method": request.method,
-        "retry_after": retry_after,
-    }
-    log_activity(
-        action=action_name,
-        module=module_name,
-        description=desc,
-        user_id=user_id,
-        username=username or "Anonymous",
-        record_id=user_id,
-        new_data=rate_limit_err_json,
-    )
+        rate_limit_err_json = {
+            "status": 429,
+            "error": "Rate limit exceeded",
+            "limit_type": "user_id" if user_id else "ip",
+            "user_id": user_id,
+            "username": username,
+            "role": role,
+            "description": err_msg,
+            "ip": client_ip,
+            "endpoint": request.endpoint,
+            "path": request.path,
+            "method": request.method,
+            "retry_after": retry_after,
+        }
+        log_activity(
+            action=action_name,
+            module=module_name,
+            description=desc,
+            user_id=user_id,
+            username=username or "Anonymous",
+            record_id=user_id,
+            new_data=rate_limit_err_json,
+        )
+    except Exception as db_err:
+        print(f"[ActivityLog Error in 429 handler]: {db_err}")
 
     if request.path.startswith("/api/"):
         return {
@@ -339,36 +365,60 @@ def not_found_handler(e):
 @app.errorhandler(500)
 @app.errorhandler(Exception)
 def internal_error_handler(e):
-    send_telegram_alert(e)
+    # Pass through standard HTTP errors so Exception doesn't swallow 429, 404, 400, etc.
+    if isinstance(e, HTTPException):
+        if e.code == 429:
+            return ratelimit_handler(e)
+        if e.code == 404:
+            return not_found_handler(e)
+        if e.code == 400:
+            return bad_request_handler(e)
+        if e.code != 500:
+            return e
+
+    # Roll back any aborted database transactions from the failed request
+    try:
+        db.session.rollback()
+    except Exception:
+        pass
+
+    try:
+        send_telegram_alert(e)
+    except Exception as ex:
+        print(f"[Telegram Alert Error in 500 handler]: {ex}")
+
     client_ip = get_client_public_ip()
     err_msg = str(e.description if hasattr(e, "description") else e)
 
     # Save 500 error into database activity_log (User requirement: activity logs just for rate limit and 500)
-    user_id = session.get("user_id") if session else None
-    username = session.get("username") if session else None
-    role = session.get("role") if session else None
-    err_type = type(e).__name__
+    try:
+        user_id = session.get("user_id") if session else None
+        username = session.get("username") if session else None
+        role = session.get("role") if session else None
+        err_type = type(e).__name__
 
-    err_500_json = {
-        "status": 500,
-        "error_type": err_type,
-        "message": err_msg,
-        "path": request.path,
-        "method": request.method,
-        "ip": client_ip,
-        "user_id": user_id,
-        "username": username,
-        "role": role,
-    }
-    log_activity(
-        action="500_INTERNAL_ERROR",
-        module="Error500",
-        description=f"HTTP 500 {err_type} on {request.method} {request.path}: {err_msg}",
-        user_id=user_id,
-        username=username or "Anonymous",
-        record_id=user_id,
-        new_data=err_500_json,
-    )
+        err_500_json = {
+            "status": 500,
+            "error_type": err_type,
+            "message": err_msg,
+            "path": request.path,
+            "method": request.method,
+            "ip": client_ip,
+            "user_id": user_id,
+            "username": username,
+            "role": role,
+        }
+        log_activity(
+            action="500_INTERNAL_ERROR",
+            module="Error500",
+            description=f"HTTP 500 {err_type} on {request.method} {request.path}: {err_msg}",
+            user_id=user_id,
+            username=username or "Anonymous",
+            record_id=user_id,
+            new_data=err_500_json,
+        )
+    except Exception as db_err:
+        print(f"[ActivityLog Error in 500 handler]: {db_err}")
 
     if request.path.startswith("/api/"):
         return {

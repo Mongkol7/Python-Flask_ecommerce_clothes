@@ -425,32 +425,22 @@ _cached_public_ip = None #global variable for caching IP address.
 
 # Get client public IP address:
 def get_client_public_ip():
-    global _cached_public_ip #for Python to knows that we want to read and write to the variable defined outside the function.
-    #Strategy01: check for Proxies & Cloudflare
-    #X-Forwarded-For is a header that is used to identify the originating IP address of a client connecting to a web server through an HTTP proxy or load balancer.
-    forwarded = request.headers.get("X-Forwarded-For") 
-    if forwarded:
-        #Take the first IP in the list (X-Forwarded-For) & remove whitespace
-        client_ip = forwarded.split(",")[0].strip()
-        #filter out localhost(127.0.0.1 is Proxy's IP)
-        if client_ip and client_ip not in ("127.0.0.1", "::1", "localhost"):
-            return client_ip #return Client IP
-    #Strategy02: Direct connect IP(when not using proxy/cloudflare)
-    remote = request.remote_addr
-    if remote and remote not in ("127.0.0.1", "::1", "localhost"):
-        return remote #return Client IP
-def get_client_public_ip():
-    """Returns the true client IP from request headers (X-Forwarded-For from Nginx) or remote_addr."""
+    """Returns the true client IP from request headers (CF-Connecting-IP, X-Real-IP, X-Forwarded-For) or remote_addr."""
     try:
         from flask import request
+        cf_ip = request.headers.get("CF-Connecting-IP")
+        if cf_ip and cf_ip.strip():
+            return cf_ip.strip()
+        real_ip = request.headers.get("X-Real-IP")
+        if real_ip and real_ip.strip():
+            return real_ip.strip()
         forwarded = request.headers.get("X-Forwarded-For")
         if forwarded:
             client_ip = forwarded.split(",")[0].strip()
-            if client_ip and client_ip not in ("127.0.0.1", "::1", "localhost"):
+            if client_ip:
                 return client_ip
-        remote = request.remote_addr
-        if remote and remote not in ("127.0.0.1", "::1", "localhost"):
-            return remote
+        if request.remote_addr:
+            return request.remote_addr
     except Exception:
         pass
     return "127.0.0.1"
@@ -468,7 +458,7 @@ def record_login_ban(duration=60):
     expires_at = now + duration
     try:
         ip = get_client_public_ip()
-        if ip and ip not in ("127.0.0.1", "::1", "localhost"):
+        if ip:
             existing_expiry = _login_bans.get(ip)
             if not existing_expiry or existing_expiry <= now:
                 _login_bans[ip] = expires_at
@@ -485,7 +475,7 @@ def is_ip_login_banned():
 
     try:
         ip = get_client_public_ip()
-        if ip and ip not in ("127.0.0.1", "::1", "localhost") and ip in _login_bans:
+        if ip and ip in _login_bans:
             expires_at = _login_bans[ip]
             if expires_at > now:
                 return int(expires_at - now)
@@ -500,7 +490,7 @@ def record_signup_ban(duration=60):
     expires_at = now + duration
     try:
         ip = get_client_public_ip()
-        if ip and ip not in ("127.0.0.1", "::1", "localhost"):
+        if ip:
             existing_expiry = _signup_bans.get(ip)
             if not existing_expiry or existing_expiry <= now:
                 _signup_bans[ip] = expires_at
@@ -517,7 +507,7 @@ def is_ip_signup_banned():
 
     try:
         ip = get_client_public_ip()
-        if ip and ip not in ("127.0.0.1", "::1", "localhost") and ip in _signup_bans:
+        if ip and ip in _signup_bans:
             expires_at = _signup_bans[ip]
             if expires_at > now:
                 return int(expires_at - now)

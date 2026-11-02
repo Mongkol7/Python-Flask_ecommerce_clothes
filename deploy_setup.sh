@@ -11,7 +11,7 @@ After=network.target
 User=ubuntu
 WorkingDirectory=/home/ubuntu/ecommerce_clothes
 Environment="PATH=/home/ubuntu/ecommerce_clothes/.venv/bin"
-ExecStart=/home/ubuntu/ecommerce_clothes/.venv/bin/gunicorn --workers 3 --bind 127.0.0.1:5000 app:app
+ExecStart=/home/ubuntu/ecommerce_clothes/.venv/bin/gunicorn --workers 1 --threads 8 --bind 127.0.0.1:5000 app:app
 Restart=always
 
 [Install]
