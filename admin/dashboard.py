@@ -23,6 +23,12 @@ def dashboard():
     # 2. Product & Inventory Metrics
     total_products = Product.query.count()
     total_stock = db.session.query(func.sum(Product.stock)).scalar() or 0
+    total_stock_value = db.session.query(
+        func.sum(func.coalesce(Product.price, 0.0) * func.coalesce(Product.stock, 0))
+    ).scalar() or 0.0
+    catalog_price_sum = db.session.query(
+        func.sum(func.coalesce(Product.price, 0.0))
+    ).scalar() or 0.0
     low_stock_products = Product.query.filter(Product.stock <= 15).order_by(Product.stock.asc()).limit(5).all()
     out_of_stock_count = Product.query.filter(Product.stock <= 0).count()
 
@@ -103,6 +109,8 @@ def dashboard():
         "cancelled_orders": cancelled_orders,
         "total_products": total_products,
         "total_stock": total_stock,
+        "total_stock_value": total_stock_value,
+        "catalog_price_sum": catalog_price_sum,
         "out_of_stock_count": out_of_stock_count,
         "low_stock_count": len(low_stock_products),
         "total_users": total_users,
