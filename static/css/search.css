@@ -35,3 +35,13 @@
   color: var(--black);
   padding: 0 3px;
 }
+
+@media (max-width: 991px) {
+  .search-section { padding-top: 105px; }
+  .empty-card { padding: 32px 24px; border-radius: 20px; }
+}
+
+@media (max-width: 575px) {
+  .search-section { padding-top: 90px; }
+  .empty-card { padding: 24px 16px; border-radius: 18px; }
+}

@@ -1,4 +1,4 @@
-﻿:root {
+:root {
             --black: #0a0a0a;
             --off-white: #f7f6f3;
             --muted: #8a8a8a;
@@ -333,11 +333,28 @@
         .delay-2 { animation-delay: 0.2s; }
         .delay-3 { animation-delay: 0.3s; }
 
-        @media (max-width: 768px) {
-            .nav-links { display: none; }
-            .hero-home { min-height: 86vh; padding-bottom: 40px; }
-            .category-card { height: 390px; padding: 28px; }
+        @media (max-width: 991px) {
+            .nav-links { display: none !important; }
+            .spacer { padding: 65px 0; }
+            .hero-home { min-height: 85vh; padding-bottom: 44px; }
+            .category-card { height: 380px; padding: 28px; }
+            .hero-title { font-size: clamp(48px, 6.8vw, 76px); letter-spacing: -2px; }
             .footer-bottom { flex-direction: column; gap: 20px; text-align: center; }
+        }
+
+        @media (max-width: 575px) {
+            .hero-home { min-height: 78vh; padding: 90px 0 28px; }
+            .hero-title { font-size: clamp(34px, 8.5vw, 52px); letter-spacing: -1.2px; line-height: 0.98; margin-bottom: 16px; }
+            .hero-copy { font-size: 13.5px; line-height: 1.5; margin-bottom: 16px; }
+            .spacer { padding: 45px 0; }
+            .category-card { height: 250px; padding: 18px; border-radius: 18px; }
+            .category-title { font-size: 26px; }
+            .section-title { font-size: clamp(28px, 6vw, 42px); }
+            .product-card { border-radius: 18px; }
+            .product-info { padding: 12px; }
+            .product-name { font-size: 14.5px; min-height: 38px; }
+            .btn-explore { padding: 12px 22px; font-size: 13px; }
+            .notes-copy { font-size: 14px; }
         }
 
         .kicker-spaced { letter-spacing: 3px; }

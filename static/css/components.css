@@ -99,9 +99,115 @@
 }
 .social-btn:hover { background: rgba(255,255,255,0.14); color: white; }
 
-@media (max-width: 768px) {
-  .nav-links { display: none; }
-  .nav-search input { width: 96px; }
+/* ==========================================================================
+   Mobile & iPad Responsive Navigation & Drawer
+   ========================================================================== */
+.nav-mobile-toggle {
+  display: none;
+  border-radius: 50%;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-mobile-drawer {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 12px;
+  right: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(28px) saturate(2);
+  -webkit-backdrop-filter: blur(28px) saturate(2);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  border-radius: 24px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04);
+  padding: 16px 18px;
+  z-index: 110;
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.nav-mobile-drawer.show {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.nav-mobile-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: 14px;
+  color: var(--black);
+  text-decoration: none;
+  font-size: 14.5px;
+  font-weight: 500;
+  transition: background 0.15s ease;
+}
+
+.nav-mobile-link:hover, .nav-mobile-link.active {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--black);
+  font-weight: 600;
+}
+
+.nav-mobile-badge {
+  background: var(--black);
+  color: white;
+  border-radius: 100px;
+  font-size: 11px;
+  padding: 2px 8px;
+  font-weight: 600;
+}
+
+@media (max-width: 991px) {
+  .nav-links { display: none !important; }
+  .nav-mobile-toggle { display: inline-flex !important; }
+}
+
+@media (min-width: 992px) {
+  .nav-mobile-toggle, .nav-mobile-drawer { display: none !important; }
+}
+
+@media (max-width: 575px) {
+  .navbar-inner {
+    margin: 8px 10px;
+    padding: 8px 14px;
+    border-radius: 20px;
+  }
+  .nav-logo { font-size: 16px; }
+  .nav-actions { gap: 6px; }
+  .nav-search input {
+    width: 84px;
+    height: 34px;
+    font-size: 12px;
+    padding: 0 10px;
+  }
+  .btn-icon {
+    width: 34px;
+    height: 34px;
+  }
+  .nav-account-menu {
+    max-width: calc(100vw - 20px);
+    right: -4px;
+    width: 250px;
+    padding: 16px;
+  }
+  .footer { padding: 50px 0 30px; }
+  .footer-bottom { flex-direction: column; gap: 16px; text-align: center; }
+}
+
+@media (min-width: 576px) and (max-width: 991px) {
+  .navbar-inner {
+    margin: 10px 16px;
+    padding: 10px 20px;
+  }
+  .nav-search input {
+    width: 120px;
+  }
   .footer-bottom { flex-direction: column; gap: 20px; text-align: center; }
 }
 

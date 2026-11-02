@@ -1,4 +1,4 @@
-﻿:root {
+:root {
             --black: #0a0a0a;
             --off-white: #f7f6f3;
             --muted: #8a8a8a;
@@ -170,13 +170,23 @@
         .footer-copy { font-size: 13px; color: rgba(255,255,255,0.25); font-weight: 300; }
 
         @media (max-width: 992px) {
+            .nav-links { display: none !important; }
+            .page-wrap { padding: 105px 0 60px; }
             .cart-shell { grid-template-columns: 1fr; }
+            .footer-bottom { flex-direction: column; gap: 20px; text-align: center; }
         }
-        @media (max-width: 640px) {
-            .cart-item { grid-template-columns: 96px 1fr; }
-            .cart-image { width: 96px; height: 120px; }
-            .subtotal { grid-column: 2; text-align: left; }
-            .product-name { font-size: 20px; }
+        @media (max-width: 575px) {
+            .page-wrap { padding: 90px 0 40px; }
+            .hero-title { font-size: clamp(32px, 8vw, 44px); }
+            .cart-item { grid-template-columns: 82px 1fr; gap: 12px; padding: 12px; border-radius: 18px; }
+            .cart-image { width: 82px; height: 104px; border-radius: 12px; }
+            .product-name { font-size: 17px; margin-bottom: 4px; }
+            .product-sub { margin-bottom: 8px; font-size: 12px; }
+            .line-price { font-size: 13px; }
+            .qty-btn { width: 32px; height: 32px; font-size: 14px; }
+            .remove-btn { padding: 6px 12px; font-size: 12px; }
+            .subtotal { grid-column: 2; text-align: left; margin-top: 6px; }
+            .summary-card { padding: 20px; border-radius: 20px; }
         }
 
         .empty-title { font-size: 48px; }

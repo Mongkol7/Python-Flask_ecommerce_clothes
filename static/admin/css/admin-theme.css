@@ -808,3 +808,26 @@ em {
   border-color: #d2e3fc !important;
 }
 
+/* ==========================================================================
+   Admin Mobile & iPad Responsiveness
+   ========================================================================== */
+@media (max-width: 991px) {
+  .app-content { padding: 18px 16px !important; }
+  .stat-card-editorial { padding: 22px 18px; margin-bottom: 16px; }
+  .card-editorial-header { padding: 18px 20px; flex-direction: column; align-items: flex-start; gap: 12px; }
+  .card-editorial-body { padding: 20px; }
+}
+
+@media (max-width: 575px) {
+  .app-content { padding: 14px 10px !important; }
+  .stat-card-editorial { padding: 18px 14px; border-radius: 18px; }
+  .stat-card-val { font-size: 24px !important; }
+  .card-editorial { border-radius: 18px; }
+  .card-editorial-header { padding: 14px 16px; }
+  .card-editorial-title { font-size: 18px; }
+  .modal-dialog { margin: 8px auto !important; max-width: calc(100vw - 16px) !important; }
+  .modal-content-mk7 { border-radius: 20px !important; }
+  .modal-header-mk7 { padding: 16px 18px !important; }
+  .modal-body-mk7 { padding: 18px 16px !important; }
+}
+

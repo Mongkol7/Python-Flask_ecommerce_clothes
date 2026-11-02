@@ -119,6 +119,72 @@
           {% endif %}
         </div>
       </div>
+
+      <!-- Mobile Menu Toggle Button (Visible on Phone & iPad) -->
+      <button type="button" class="btn-icon nav-mobile-toggle" id="navMobileToggle" aria-label="Toggle navigation menu" aria-expanded="false">
+        <svg class="nav-icon-hamburger" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="4" y1="6" x2="20" y2="6"/>
+          <line x1="4" y1="12" x2="20" y2="12"/>
+          <line x1="4" y1="18" x2="20" y2="18"/>
+        </svg>
+        <svg class="nav-icon-close" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Mobile & iPad Navigation Drawer -->
+  <div class="nav-mobile-drawer" id="navMobileDrawer">
+    <div class="nav-mobile-content">
+      <div class="nav-mobile-group">
+        <a href="{{ url_for('front_bp.home') }}" class="nav-mobile-link {% if request.endpoint in ['front_bp.home', 'home'] %}active{% endif %}">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span>Home</span>
+        </a>
+        <a href="{{ url_for('front_bp.product_list') }}" class="nav-mobile-link {% if request.endpoint in ['front_bp.product_list', 'front_bp.product_detail', 'front_bp.old_product_detail', 'product_list', 'product_detail', 'old_product_detail'] %}active{% endif %}">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+          <span>All Products</span>
+        </a>
+        <a href="{{ url_for('front_bp.cart') }}" class="nav-mobile-link {% if request.endpoint in ['front_bp.cart', 'cart'] %}active{% endif %}">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+          <span>Shopping Bag</span>
+          {% if cart_count > 0 %}
+          <span class="nav-mobile-badge ms-auto">{{ cart_count }}</span>
+          {% endif %}
+        </a>
+        {% if session.get('is_login') %}
+        <a href="{{ url_for('front_bp.my_orders') }}" class="nav-mobile-link {% if request.endpoint in ['front_bp.my_orders', 'my_orders'] %}active{% endif %}">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/><path d="m9 14 2 2 4-4"/></svg>
+          <span>My Orders</span>
+        </a>
+        <a href="{{ url_for('front_bp.user_profile') }}" class="nav-mobile-link {% if request.endpoint in ['front_bp.user_profile', 'user_profile'] %}active{% endif %}">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span>Profile &amp; Wallet</span>
+        </a>
+        {% if session.get('role') == 'admin' %}
+        <a href="{{ url_for('admin_bp.dashboard') }}" class="nav-mobile-link text-primary">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+          <span>Admin Portal</span>
+        </a>
+        {% endif %}
+        {% endif %}
+      </div>
+
+      <div class="nav-mobile-footer pt-3 mt-2 border-top">
+        {% if session.get('is_login') %}
+        <div class="d-flex align-items-center justify-content-between">
+          <div class="small text-muted">Signed in as <strong>{{ user_name }}</strong></div>
+          <a href="{{ url_for('front_bp.user_logout') }}" class="btn-pill-light btn-sm px-3 py-1 text-danger text-decoration-none" style="font-size: 12px;">Sign Out</a>
+        </div>
+        {% else %}
+        <div class="d-grid gap-2">
+          <a href="{{ url_for('front_bp.user_login') }}" class="btn-pill-dark justify-content-center py-2 text-decoration-none" style="font-size: 13.5px;">Log In</a>
+          <a href="{{ url_for('front_bp.user_register') }}" class="btn-pill-light justify-content-center py-2 text-decoration-none" style="font-size: 13.5px;">Sign Up</a>
+        </div>
+        {% endif %}
+      </div>
     </div>
   </div>
 </nav>
@@ -127,29 +193,75 @@
   (function() {
     const accountBtn = document.getElementById('navAccountBtn');
     const accountMenu = document.getElementById('navAccountMenu');
+    const mobileToggle = document.getElementById('navMobileToggle');
+    const mobileDrawer = document.getElementById('navMobileDrawer');
 
     if (accountBtn && accountMenu) {
       accountBtn.addEventListener('click', function(e) {
         e.stopPropagation();
+        if (mobileDrawer) {
+          mobileDrawer.classList.remove('show');
+          if (mobileToggle) {
+            mobileToggle.setAttribute('aria-expanded', 'false');
+            const ib = mobileToggle.querySelector('.nav-icon-hamburger');
+            const ic = mobileToggle.querySelector('.nav-icon-close');
+            if (ib && ic) { ib.style.display = 'block'; ic.style.display = 'none'; }
+          }
+        }
         const isOpen = accountMenu.classList.toggle('show');
         accountBtn.setAttribute('aria-expanded', isOpen);
       });
 
-      // Close dropdown when clicking outside
       document.addEventListener('click', function(e) {
         if (!accountBtn.contains(e.target) && !accountMenu.contains(e.target)) {
           accountMenu.classList.remove('show');
           accountBtn.setAttribute('aria-expanded', 'false');
         }
       });
+    }
 
-      // Close dropdown on Escape key
-      document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
+    if (mobileToggle && mobileDrawer) {
+      const iconBurger = mobileToggle.querySelector('.nav-icon-hamburger');
+      const iconClose = mobileToggle.querySelector('.nav-icon-close');
+
+      mobileToggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (accountMenu) {
           accountMenu.classList.remove('show');
-          accountBtn.setAttribute('aria-expanded', 'false');
+          if (accountBtn) accountBtn.setAttribute('aria-expanded', 'false');
+        }
+        const isOpen = mobileDrawer.classList.toggle('show');
+        mobileToggle.setAttribute('aria-expanded', isOpen);
+        if (iconBurger && iconClose) {
+          iconBurger.style.display = isOpen ? 'none' : 'block';
+          iconClose.style.display = isOpen ? 'block' : 'none';
+        }
+      });
+
+      document.addEventListener('click', function(e) {
+        if (!mobileToggle.contains(e.target) && !mobileDrawer.contains(e.target)) {
+          mobileDrawer.classList.remove('show');
+          mobileToggle.setAttribute('aria-expanded', 'false');
+          if (iconBurger && iconClose) {
+            iconBurger.style.display = 'block';
+            iconClose.style.display = 'none';
+          }
         }
       });
     }
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        if (accountMenu) accountMenu.classList.remove('show');
+        if (accountBtn) accountBtn.setAttribute('aria-expanded', 'false');
+        if (mobileDrawer) mobileDrawer.classList.remove('show');
+        if (mobileToggle) {
+          mobileToggle.setAttribute('aria-expanded', 'false');
+          const ib = mobileToggle.querySelector('.nav-icon-hamburger');
+          const ic = mobileToggle.querySelector('.nav-icon-close');
+          if (ib && ic) { ib.style.display = 'block'; ic.style.display = 'none'; }
+        }
+      }
+    });
   })();
 </script>
