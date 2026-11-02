@@ -144,6 +144,29 @@ def usd_format(value, rate=None):
         return "$0.00"
 
 
+@app.template_filter("cambodia_time")
+def cambodia_time_filter(value, fmt="%Y-%m-%d %I:%M %p"):
+    """Converts a UTC datetime object or ISO string into Phnom Penh, Cambodia (UTC+7) time."""
+    if not value:
+        return "—"
+    try:
+        from datetime import datetime, timedelta
+        dt = value
+        if isinstance(value, str):
+            for pattern in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S"):
+                try:
+                    dt = datetime.strptime(value, pattern)
+                    break
+                except ValueError:
+                    pass
+        if hasattr(dt, "strftime"):
+            pp_dt = dt + timedelta(hours=7)
+            return pp_dt.strftime(fmt)
+        return str(value)
+    except Exception:
+        return str(value)
+
+
 # Context Processors
 @app.context_processor
 def inject_currency_helpers():
@@ -151,6 +174,7 @@ def inject_currency_helpers():
         "khr_rate": getattr(Config, "KHR_RATE", 4000.0),
         "khr_format": khr_format,
         "usd_format": usd_format,
+        "cambodia_time": cambodia_time_filter,
     }
 @app.context_processor
 def inject_cart_count():
@@ -430,6 +454,12 @@ with app.app_context():
         order_cols = [c["name"] for c in inspector.get_columns("orders")]
         if "balance_applied" not in order_cols:
             db.session.execute(text("ALTER TABLE orders ADD COLUMN balance_applied FLOAT DEFAULT 0.0"))
+            db.session.commit()
+        if "cancelled_at" not in order_cols:
+            db.session.execute(text("ALTER TABLE orders ADD COLUMN cancelled_at TIMESTAMP NULL"))
+            db.session.commit()
+        if "paid_at" not in order_cols:
+            db.session.execute(text("ALTER TABLE orders ADD COLUMN paid_at TIMESTAMP NULL"))
             db.session.commit()
     except Exception as e:
         print(f"[Schema Migration Note]: {e}")

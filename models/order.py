@@ -22,6 +22,8 @@ class Order(db.Model):
     status = db.Column(db.String(30), default="pending")  # pending, confirmed, processing, shipped, delivered, cancelled
     notes = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    paid_at = db.Column(db.DateTime, nullable=True)
+    cancelled_at = db.Column(db.DateTime, nullable=True)
 
     user = db.relationship("User", backref=db.backref("orders", lazy=True))
     items = db.relationship("OrderItem", back_populates="order", cascade="all, delete-orphan", lazy=True)
@@ -36,7 +38,45 @@ class Order(db.Model):
         rand_suffix = uuid.uuid4().hex[:5].upper()
         return f"ORD-{date_str}-{rand_suffix}"
 
+    def get_paid_at(self):
+        """Returns the confirmed payment datetime (or created_at if pre-paid)."""
+        return self.paid_at or self.created_at
+
+    def get_cancelled_at(self):
+        """Returns the cancellation datetime, falling back to wallet transaction or created_at."""
+        if self.cancelled_at:
+            return self.cancelled_at
+        if self.status == "cancelled":
+            if hasattr(self, "wallet_transactions") and self.wallet_transactions:
+                for tx in self.wallet_transactions:
+                    if tx.tx_type == "refund_credit" and tx.created_at:
+                        return tx.created_at
+            return self.created_at
+        return None
+
     def to_dict(self):
+        from datetime import timedelta
+        paid_dt = self.get_paid_at()
+        cancelled_dt = self.get_cancelled_at()
+        cam_tz = timedelta(hours=7)
+
+        created_pp = (self.created_at + cam_tz).strftime("%Y-%m-%d %I:%M:%S %p") if self.created_at else None
+        paid_pp = (paid_dt + cam_tz).strftime("%Y-%m-%d %I:%M:%S %p") if paid_dt else None
+        cancelled_pp = (cancelled_dt + cam_tz).strftime("%Y-%m-%d %I:%M:%S %p") if cancelled_dt else None
+
+        bal_applied = float(getattr(self, "balance_applied", 0.0) or 0.0)
+        tot = float(self.total or 0.0)
+        rem_due = max(0.0, tot - bal_applied)
+
+        items_data = []
+        for item in self.items:
+            item_d = item.to_dict()
+            if item.product:
+                item_d["current_stock"] = item.product.stock
+            else:
+                item_d["current_stock"] = 0
+            items_data.append(item_d)
+
         return {
             "id": self.id,
             "order_number": self.order_number,
@@ -50,11 +90,16 @@ class Order(db.Model):
             "payment_method": self.payment_method,
             "subtotal": self.subtotal,
             "total": self.total,
-            "balance_applied": getattr(self, "balance_applied", 0.0) or 0.0,
+            "balance_applied": bal_applied,
+            "remaining_due": rem_due,
             "status": self.status,
             "notes": self.notes,
             "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else None,
-            "items": [item.to_dict() for item in self.items],
+            "created_at_pp": created_pp,
+            "paid_at_pp": paid_pp,
+            "cancelled_at": cancelled_dt.strftime("%Y-%m-%d %H:%M:%S") if cancelled_dt else None,
+            "cancelled_at_pp": cancelled_pp,
+            "items": items_data,
         }
 
 

@@ -253,6 +253,7 @@ def cancel_order(order_id):
     # Check if within 4-hour window
     if elapsed <= timedelta(hours=4) and order.status == "pending":
         order.status = "cancelled"
+        order.cancelled_at = datetime.utcnow()
 
         # Restore product inventory stock
         for item in order.items:

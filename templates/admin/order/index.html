@@ -151,7 +151,7 @@
               <th>Items</th>
               <th style="width: 110px;">Total</th>
               <th style="width: 160px;">Status (Stock Synced)</th>
-              <th style="width: 130px;">Date</th>
+              <th style="width: 170px;">Date (Phnom Penh)</th>
               <th style="width: 140px;" class="text-end">Actions</th>
             </tr>
           </thead>
@@ -211,7 +211,21 @@
                 </select>
               </td>
               <td>
-                <span class="text-secondary small">{{ o.created_at.strftime('%Y-%m-%d %H:%M') if o.created_at else '—' }}</span>
+                <div class="fw-semibold text-dark" style="font-size: 13px;">
+                  {{ o.created_at|cambodia_time('%Y-%m-%d %I:%M %p') }}
+                </div>
+                <div class="text-muted" style="font-size: 11px;">
+                  <i class="bi bi-clock me-1"></i>PP (UTC+7)
+                </div>
+                {% if o.status == 'cancelled' %}
+                <div class="text-danger fw-semibold mt-1" style="font-size: 10.5px;">
+                  <i class="bi bi-x-circle me-1"></i>Cancelled: {{ (o.get_cancelled_at() or o.created_at)|cambodia_time('%b %d, %I:%M %p') }}
+                </div>
+                {% elif o.status == 'pending' %}
+                <div class="text-warning mt-1" style="font-size: 10.5px;">
+                  <i class="bi bi-hourglass-split me-1"></i>4h Grace Active
+                </div>
+                {% endif %}
               </td>
               <td class="text-end">
                 <div class="d-inline-flex gap-2">
@@ -247,41 +261,100 @@
 <!-- Order Detail Modal -->
 <div class="modal fade" id="orderDetailModal" tabindex="-1" aria-labelledby="orderDetailModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content modal-content-mk7">
-      <div class="modal-header modal-header-mk7">
-        <h5 class="modal-title fw-bold" id="orderDetailModalLabel">
-          <i class="bi bi-receipt me-2"></i>Order Breakdown: <span id="modalOrderNumber" class="text-primary font-monospace"></span>
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal-content modal-content-mk7 shadow-lg">
+      <div class="modal-header modal-header-mk7 d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-receipt-cutoff fs-5 text-dark"></i>
+          <div>
+            <h5 class="modal-title fw-bold mb-0" id="orderDetailModalLabel">
+              Order Breakdown: <span id="modalOrderNumber" class="text-primary font-monospace"></span>
+            </h5>
+            <div class="text-muted small" style="font-size: 11px;">Phnom Penh Local Time (UTC+7)</div>
+          </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <span id="modalStatusBadge" class="badge rounded-pill px-3 py-2 text-capitalize fw-semibold"></span>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
       </div>
       <div class="modal-body modal-body-mk7 p-4">
-        <!-- Customer & Shipping Row -->
-        <div class="row g-3 mb-4 p-3 rounded" style="background: #faf8f5; border: 1px solid var(--border);">
+        <!-- Purchase & Cancellation Timestamps Banner -->
+        <div class="card-mk7 p-3 mb-3" style="background: #ffffff; border: 1px solid var(--border);">
+          <div class="row g-3 align-items-center">
+            <div class="col-sm-6">
+              <span class="kicker-tag text-success" style="font-size: 10px;">
+                <i class="bi bi-cart-check-fill me-1"></i>Purchase / Paid Time (Phnom Penh)
+              </span>
+              <div class="fw-bold text-dark fs-6 mt-1" id="modalPurchasedAt">—</div>
+              <div class="text-muted small" style="font-size: 11px;">Verified & stock deducted</div>
+            </div>
+            <div class="col-sm-6" id="modalCancellationBox">
+              <span class="kicker-tag text-danger" style="font-size: 10px;">
+                <i class="bi bi-x-circle-fill me-1"></i>Cancellation Time (Phnom Penh)
+              </span>
+              <div class="fw-bold text-danger fs-6 mt-1" id="modalCancelledAt">—</div>
+              <div class="text-danger small" style="font-size: 11px;">
+                <i class="bi bi-wallet2 me-1"></i>100% refunded to store balance
+              </div>
+            </div>
+            <div class="col-sm-6" id="modalActiveGraceBox" style="display: none;">
+              <span class="kicker-tag text-warning" style="font-size: 10px;">
+                <i class="bi bi-hourglass-split me-1"></i>Customer Cancellation Window
+              </span>
+              <div class="fw-bold text-warning fs-6 mt-1">4-Hour Grace Period Active</div>
+              <div class="text-muted small" style="font-size: 11px;">Can be cancelled by user for store credit</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Customer & Delivery Info Row -->
+        <div class="row g-3 mb-3 p-3 rounded" style="background: #faf8f5; border: 1px solid var(--border);">
           <div class="col-md-6">
             <span class="kicker-tag" style="font-size: 10px;">Customer Profile</span>
             <h6 class="fw-bold mb-1" id="modalCustomerName"></h6>
             <div class="small text-secondary" id="modalCustomerEmail"></div>
             <div class="small text-secondary" id="modalCustomerPhone"></div>
+            <div class="mt-2" id="modalUserAccountType"></div>
           </div>
           <div class="col-md-6">
-            <span class="kicker-tag" style="font-size: 10px;">Delivery Destination</span>
+            <span class="kicker-tag" style="font-size: 10px;">Delivery Destination & Gateway</span>
             <div class="small fw-semibold text-dark" id="modalShippingAddress"></div>
-            <div class="small text-secondary mt-1">Payment: <span id="modalPaymentMethod" class="badge bg-light text-dark text-uppercase"></span></div>
-            <div class="small text-muted" id="modalNotes"></div>
+            <div class="small text-secondary mt-1">Payment Method: <span id="modalPaymentMethod" class="badge bg-light text-dark font-monospace text-uppercase"></span></div>
+            <div class="small text-muted mt-1" id="modalNotes"></div>
+          </div>
+        </div>
+
+        <!-- Payment Breakdown Card (Especially for Split Payment) -->
+        <div class="row g-2 mb-3 p-3 rounded bg-light border" id="modalPaymentBreakdownRow">
+          <div class="col-sm-4">
+            <span class="text-muted small d-block">Subtotal:</span>
+            <span class="fw-semibold text-dark" id="modalSubtotal"></span>
+          </div>
+          <div class="col-sm-4" id="modalBalanceAppliedCol">
+            <span class="text-muted small d-block">Store Balance Applied:</span>
+            <span class="fw-bold text-success" id="modalBalanceApplied">0 ៛</span>
+          </div>
+          <div class="col-sm-4" id="modalRemainingDueCol">
+            <span class="text-muted small d-block">Paid via Bakong KHQR:</span>
+            <span class="fw-bold text-primary" id="modalRemainingDue"></span>
           </div>
         </div>
 
         <!-- Ordered Items Table -->
-        <h6 class="fw-bold mb-2">Purchased Items & Inventory Impact</h6>
-        <div class="table-responsive mb-3">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <h6 class="fw-bold mb-0">Purchased Items & Inventory Impact</h6>
+          <span class="text-muted small" id="modalItemsCount"></span>
+        </div>
+        <div class="table-responsive mb-0">
           <table class="table table-bordered table-sm align-middle">
             <thead class="table-light small">
               <tr>
                 <th style="width: 50px;">Item</th>
                 <th>Product Description</th>
-                <th style="width: 100px;">Price</th>
-                <th style="width: 80px;">Qty</th>
-                <th style="width: 110px;" class="text-end">Subtotal</th>
+                <th style="width: 110px;">Price</th>
+                <th style="width: 70px;" class="text-center">Qty</th>
+                <th style="width: 110px;" class="text-center">Current Stock</th>
+                <th style="width: 120px;" class="text-end">Subtotal</th>
               </tr>
             </thead>
             <tbody id="modalItemsBody">
@@ -289,7 +362,7 @@
             </tbody>
             <tfoot>
               <tr>
-                <th colspan="4" class="text-end fw-bold">Grand Total:</th>
+                <th colspan="5" class="text-end fw-bold">Grand Total:</th>
                 <th class="text-end fw-bold text-primary fs-6" id="modalOrderTotal"></th>
               </tr>
             </tfoot>
@@ -356,29 +429,86 @@
             document.getElementById('modalShippingAddress').textContent = `${o.shipping_address || 'No address'}, ${o.city || ''} ${o.zip_code || ''}`;
             document.getElementById('modalPaymentMethod').textContent = o.payment_method;
             document.getElementById('modalNotes').textContent = o.notes ? `Note: ${o.notes}` : '';
-            const orderTotalNum = parseFloat(o.total) || 0;
-            const orderTotalUSD = (orderTotalNum / 4000).toFixed(2);
-            document.getElementById('modalOrderTotal').innerHTML = `${Math.round(orderTotalNum).toLocaleString()} ៛ <span class="text-muted small fw-normal ms-1">(≈ $${orderTotalUSD})</span>`;
+
+            // User account type badge
+            const userTypeEl = document.getElementById('modalUserAccountType');
+            if (o.user_id) {
+              userTypeEl.innerHTML = `<span class="badge bg-dark-subtle text-dark border"><i class="bi bi-person-check me-1"></i>Registered Customer (ID: #${o.user_id})</span>`;
+            } else {
+              userTypeEl.innerHTML = `<span class="badge bg-secondary-subtle text-secondary border"><i class="bi bi-person me-1"></i>Guest Checkout</span>`;
+            }
+
+            // Timestamps: Purchased & Cancelled in Phnom Penh Time (UTC+7)
+            document.getElementById('modalPurchasedAt').textContent = o.paid_at_pp || o.created_at_pp || 'N/A';
+
+            const cancelBox = document.getElementById('modalCancellationBox');
+            const graceBox = document.getElementById('modalActiveGraceBox');
+            if (o.status === 'cancelled') {
+              cancelBox.style.display = 'block';
+              graceBox.style.display = 'none';
+              document.getElementById('modalCancelledAt').textContent = o.cancelled_at_pp || o.created_at_pp || 'N/A';
+            } else if (o.status === 'pending') {
+              cancelBox.style.display = 'none';
+              graceBox.style.display = 'block';
+            } else {
+              cancelBox.style.display = 'none';
+              graceBox.style.display = 'none';
+            }
+
+            // Status Badge in Modal Header
+            const statusBadge = document.getElementById('modalStatusBadge');
+            statusBadge.textContent = o.status;
+            statusBadge.className = 'badge rounded-pill px-3 py-2 text-capitalize fw-semibold status-badge-' + o.status;
+
+            // Financial Calculations & Split Payment
+            const subtotalNum = parseFloat(o.subtotal || o.total) || 0;
+            const balApplied = parseFloat(o.balance_applied) || 0;
+            const totalNum = parseFloat(o.total) || 0;
+            const remainingDue = parseFloat(o.remaining_due || Math.max(0, totalNum - balApplied));
+
+            document.getElementById('modalSubtotal').innerHTML = `${Math.round(subtotalNum).toLocaleString()} ៛ <span class="text-muted small fw-normal">(≈ $${(subtotalNum / 4000).toFixed(2)})</span>`;
+
+            const balCol = document.getElementById('modalBalanceAppliedCol');
+            const remCol = document.getElementById('modalRemainingDueCol');
+            if (balApplied > 0) {
+              balCol.style.display = 'block';
+              document.getElementById('modalBalanceApplied').innerHTML = `-${Math.round(balApplied).toLocaleString()} ៛ <span class="text-muted small fw-normal">(≈ $${(balApplied / 4000).toFixed(2)})</span>`;
+              document.getElementById('modalRemainingDue').innerHTML = `${Math.round(remainingDue).toLocaleString()} ៛ <span class="text-muted small fw-normal">(≈ $${(remainingDue / 4000).toFixed(2)})</span>`;
+            } else {
+              balCol.style.display = 'none';
+              document.getElementById('modalRemainingDue').innerHTML = `${Math.round(totalNum).toLocaleString()} ៛ <span class="text-muted small fw-normal">(≈ $${(totalNum / 4000).toFixed(2)})</span>`;
+            }
+
+            document.getElementById('modalOrderTotal').innerHTML = `${Math.round(totalNum).toLocaleString()} ៛ <span class="text-muted small fw-normal ms-1">(≈ $${(totalNum / 4000).toFixed(2)})</span>`;
+
+            // Items Count
+            document.getElementById('modalItemsCount').textContent = `${o.items.length} item(s)`;
 
             const tbody = document.getElementById('modalItemsBody');
             tbody.innerHTML = '';
             o.items.forEach(item => {
               const itemPrice = parseFloat(item.product_price) || 0;
               const itemSub = parseFloat(item.subtotal) || 0;
+              const stock = (typeof item.current_stock !== 'undefined' && item.current_stock !== null) ? item.current_stock : '—';
               const tr = document.createElement('tr');
               tr.innerHTML = `
                 <td>
                   <img src="${item.product_image || '/static/image/product/Man_Brown01.jpg'}" class="rounded" width="36" height="44" style="object-fit:cover;">
                 </td>
                 <td>
-                  <div class="fw-semibold">${item.product_title}</div>
+                  <div class="fw-semibold text-dark">${item.product_title}</div>
                   <div class="text-muted small">Product ID: #${item.product_id}</div>
                 </td>
                 <td>
                   <div>${Math.round(itemPrice).toLocaleString()} ៛</div>
                   <div class="text-muted small">≈ $${(itemPrice / 4000).toFixed(2)}</div>
                 </td>
-                <td><span class="badge bg-secondary">${item.quantity}</span></td>
+                <td class="text-center">
+                  <span class="badge bg-secondary">${item.quantity}</span>
+                </td>
+                <td class="text-center">
+                  <span class="badge bg-light text-dark border" title="Current live warehouse stock">${stock} units</span>
+                </td>
                 <td class="text-end fw-bold">
                   <div>${Math.round(itemSub).toLocaleString()} ៛</div>
                   <div class="text-muted small fw-normal">≈ $${(itemSub / 4000).toFixed(2)}</div>

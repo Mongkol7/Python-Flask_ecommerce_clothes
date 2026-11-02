@@ -300,6 +300,10 @@ def order_update_status(order_id):
                     p.stock = max(0, p.stock - item.quantity)
 
     order.status = new_status
+    if new_status == "cancelled":
+        order.cancelled_at = datetime.utcnow()
+    elif old_status == "cancelled" and new_status != "cancelled":
+        order.cancelled_at = None
     db.session.commit()
 
     if old_status != "cancelled" and new_status == "cancelled":

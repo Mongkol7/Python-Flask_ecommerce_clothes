@@ -1,4 +1,5 @@
 import re
+from datetime import datetime
 from flask import flash, jsonify, make_response, redirect, render_template, request, session, url_for
 from config import Config
 from extensions import db, limiter
@@ -237,6 +238,7 @@ def payment():
         total=server_total,
         balance_applied=balance_to_apply,
         status="pending",  # Paid & Placed -> 4-hour cancellation grace window active
+        paid_at=datetime.utcnow(),
         notes=order_notes,
     )
     db.session.add(db_order)
