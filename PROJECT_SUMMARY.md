@@ -258,3 +258,4 @@ sudo systemctl status mk7 --no-pager
 * **Security & Protection**: Flask-Limiter, Flask-WTF (CSRF), Werkzeug Security (PBKDF2 SHA-256), ProxyFix
 * **Frontend UI**: HTML5, Vanilla JavaScript (ES6+), Bootstrap 5.3, Bootstrap Icons, DM Sans & Playfair Display fonts
 * **Hosting & DevOps**: AWS EC2, Nginx, Gunicorn (gthread), Systemd, DuckDNS, Certbot (SSL)
+
