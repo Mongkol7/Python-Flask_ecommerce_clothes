@@ -1,6 +1,6 @@
-# Python-Flask_FinancialLedger-TransactionOperations
+# Python-Ecommerce_Clothes
 
-**MK7 Luxury Fashion & Financial Ledger Platform** — An end-to-end Python Flask e-commerce system featuring an immutable store credit wallet ledger, National Bank of Cambodia (NBC) Bakong KHQR integration, dual-currency engine (KHR/USD), 4-hour cancellation auto-refunds, and automated Telegram operations.
+**MK7 Luxury Fashion & E-Commerce Platform** — An end-to-end Python Flask e-commerce system featuring an immutable store credit wallet ledger, National Bank of Cambodia (NBC) Bakong KHQR integration, dual-currency engine (KHR/USD), 4-hour cancellation auto-refunds, and automated Telegram operations.
 
 ## Core Features & Architecture
 
